@@ -32,4 +32,4 @@ SignalForge is designed as a distributed observability pipeline.
                                            +--------------+
 ```
 
-Phase 0 implements the shell for the frontend, API, worker, local infrastructure, and documentation. Event ingestion, queueing, anomaly detection, incident grouping, AI summaries, alerts, and pipeline health are added in later phases.
+Phase 3 implements the API ingestion path, local queue fallback, worker event processing, deterministic fingerprinting, idempotent event storage, and event explorer. Metric rollups, anomaly detection, incident grouping, AI summaries, alerts, and pipeline health are added in later phases.

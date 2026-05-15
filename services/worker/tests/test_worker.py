@@ -6,4 +6,4 @@ def test_worker_status_is_importable() -> None:
 
     assert status.service == "signalforge-worker"
     assert status.status == "healthy"
-    assert status.mode == "local-placeholder"
+    assert status.mode == "local-queue"

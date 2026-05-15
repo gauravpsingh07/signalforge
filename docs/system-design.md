@@ -12,9 +12,9 @@
 8. Discord alerts are sent for critical incidents and recoveries.
 9. The SvelteKit dashboard shows service health, events, incidents, and pipeline health.
 
-## Phase 2 Scope
+## Phase 3 Scope
 
-Phase 2 adds the public ingestion path on top of the secure metadata foundation:
+Phase 3 adds worker processing on top of the ingestion path:
 
 - Monorepo structure.
 - SvelteKit login, dashboard, project list, and project API key settings screens.
@@ -29,12 +29,17 @@ Phase 2 adds the public ingestion path on top of the secure metadata foundation:
 - In-memory rate limiting fallback for local development.
 - Queue abstraction that writes to Upstash Redis REST when configured or local JSONL otherwise.
 - `worker_jobs` records for queued ingestion jobs.
-- Python worker skeleton.
-- PostgreSQL metadata schema for users, projects, api_keys, and worker_jobs.
+- Python worker queue consumer.
+- Event normalization for service, environment, level, timestamp, received_at, and metadata.
+- Message normalization and deterministic fingerprint hashing.
+- Idempotent event storage with local JSONL fallback and PostgreSQL `events_metadata`.
+- Fingerprint updates with local JSON fallback and PostgreSQL `event_fingerprints`.
+- Event search API and frontend event explorer.
+- PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, and event_fingerprints.
 - Docker Compose for local Postgres and Redis.
 - GitHub Actions skeleton.
 
-No worker normalization, event analytics storage, anomaly detection, incident grouping, AI summaries, or alerts are implemented in Phase 2.
+No metric rollups, anomaly detection, incident grouping, AI summaries, or alerts are implemented in Phase 3.
 
 ## API Key Hashing and Ownership Model
 
@@ -45,3 +50,9 @@ Every project belongs to a user. Project reads, updates, and API key management 
 ## Async Ingestion Boundary
 
 The ingestion API authenticates the raw project key, validates the event, applies rate limits, creates a queued `worker_jobs` record, writes a queue payload, updates `last_used_at`, and returns `202 Accepted`. It does not call Gemini, ClickHouse/Tinybird, anomaly detection, or Discord. This keeps request latency bounded and preserves the distributed-system boundary between API ingestion and background processing.
+
+## Worker Processing
+
+The worker reads queued jobs from the same local JSONL or Redis/Upstash-style queue abstraction used by the API. Each event is normalized, fingerprinted, stored idempotently, and marked complete. Failed jobs increment attempts and move to `dead_letter` after the configured maximum attempts.
+
+Client-provided `eventId` values are used for idempotency per project. Repeated timeout messages with different request IDs, UUIDs, timestamps, or variable numbers normalize to the same fingerprint input.

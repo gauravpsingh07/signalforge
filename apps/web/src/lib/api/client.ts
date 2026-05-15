@@ -50,6 +50,25 @@ export type ApiKeyCreateResponse = {
   created_at: string;
 };
 
+export type ProcessedEvent = {
+  event_id: string;
+  project_id: string;
+  api_key_prefix: string;
+  timestamp: string;
+  received_at: string;
+  service: string;
+  environment: string;
+  level: string;
+  message: string;
+  normalized_message: string;
+  fingerprint_hash: string;
+  status_code: number | null;
+  latency_ms: number | null;
+  trace_id: string | null;
+  request_id: string | null;
+  metadata: Record<string, unknown>;
+};
+
 const API_BASE_URL = env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 async function apiRequest<T>(
@@ -150,6 +169,28 @@ export function revokeApiKey(token: string, keyId: string): Promise<ApiKey> {
     },
     token
   );
+}
+
+export function listEvents(
+  token: string,
+  projectId: string,
+  filters: {
+    service?: string;
+    environment?: string;
+    level?: string;
+    search?: string;
+    start?: string;
+    end?: string;
+  } = {}
+): Promise<{ events: ProcessedEvent[] }> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) {
+      params.set(key, value);
+    }
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest<{ events: ProcessedEvent[] }>(`/projects/${projectId}/events${suffix}`, {}, token);
 }
 
 export { API_BASE_URL };

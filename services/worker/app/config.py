@@ -18,6 +18,11 @@ class WorkerSettings(BaseSettings):
     clickhouse_database: str = ""
     gemini_api_key: str = ""
     discord_webhook_url: str = ""
+    local_queue_path: str = "../../tmp/signalforge-events.jsonl"
+    local_event_store_path: str = "../../tmp/signalforge-processed-events.jsonl"
+    local_worker_jobs_path: str = "../../tmp/signalforge-worker-jobs.json"
+    local_fingerprints_path: str = "../../tmp/signalforge-fingerprints.json"
+    ingest_max_metadata_bytes: int = 8192
 
     model_config = SettingsConfigDict(
         env_file=".env",

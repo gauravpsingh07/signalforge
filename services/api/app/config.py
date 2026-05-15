@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     ingest_max_message_length: int = 2000
     ingest_max_metadata_bytes: int = 8192
     local_queue_path: str = "../../tmp/signalforge-events.jsonl"
+    local_event_store_path: str = "../../tmp/signalforge-processed-events.jsonl"
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -1,6 +1,6 @@
 # API Reference
 
-Phase 2 includes service health, user auth, project management, hashed API key management, and async event ingestion.
+Phase 3 includes service health, user auth, project management, hashed API key management, async event ingestion, and processed event search.
 
 ## Implemented
 
@@ -159,6 +159,44 @@ Response:
 ```
 
 Invalid API keys return `401`, validation failures return `422`, and rate limits return `429` with `Retry-After`.
+
+## Event Search
+
+### `GET /projects/{project_id}/events`
+
+Requires dashboard JWT auth. Returns processed events for an owned project.
+
+Supported query filters:
+
+- `service`
+- `environment`
+- `level`
+- `start`
+- `end`
+- `search`
+- `limit`
+
+Response:
+
+```json
+{
+  "events": [
+    {
+      "event_id": "evt_123",
+      "project_id": "project_uuid",
+      "timestamp": "2026-05-15T15:45:00+00:00",
+      "service": "payment-api",
+      "environment": "production",
+      "level": "error",
+      "message": "Checkout timeout",
+      "fingerprint_hash": "abc123",
+      "status_code": 504,
+      "latency_ms": 2380,
+      "metadata": {"route": "/checkout"}
+    }
+  ]
+}
+```
 
 ## Placeholders
 

@@ -14,7 +14,7 @@ Phase 1 demo:
 10. Create a second demo key and send events:
     `python scripts/send_demo_events.py --api-url http://localhost:8000 --project-key sf_demo_your_key`
 11. Confirm the script prints accepted job IDs.
-12. Open `/projects/{projectId}/events` and note that event explorer rows arrive after later worker processing phases.
-13. Start the worker with `python -m app.worker --once` to verify the worker package imports and reports status.
+12. Run the worker from `services/worker` with `python -m app.worker --once` once per queued event.
+13. Open `/projects/{projectId}/events` and verify processed events appear with service, level, latency, metadata, and fingerprint details.
 
-Future demo phases will add spike generation, event storage, anomaly detection, incidents, AI summaries, alerts, and pipeline observability.
+Future demo phases will add spike generation, metric rollups, anomaly detection, incidents, AI summaries, alerts, and pipeline observability.

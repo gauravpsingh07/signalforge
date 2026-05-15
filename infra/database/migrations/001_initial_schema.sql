@@ -47,12 +47,51 @@ CREATE TABLE IF NOT EXISTS worker_jobs (
   completed_at TIMESTAMPTZ
 );
 
+CREATE TABLE IF NOT EXISTS event_fingerprints (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  service TEXT NOT NULL,
+  environment TEXT NOT NULL,
+  level TEXT NOT NULL,
+  status_code INTEGER,
+  fingerprint_hash TEXT NOT NULL,
+  normalized_message TEXT NOT NULL,
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  occurrence_count INTEGER NOT NULL DEFAULT 1,
+  UNIQUE(project_id, fingerprint_hash)
+);
+
+CREATE TABLE IF NOT EXISTS events_metadata (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  event_id TEXT NOT NULL,
+  api_key_prefix TEXT NOT NULL,
+  timestamp TIMESTAMPTZ NOT NULL,
+  received_at TIMESTAMPTZ NOT NULL,
+  service TEXT NOT NULL,
+  environment TEXT NOT NULL,
+  level TEXT NOT NULL,
+  message TEXT NOT NULL,
+  normalized_message TEXT NOT NULL,
+  fingerprint_hash TEXT NOT NULL,
+  status_code INTEGER,
+  latency_ms INTEGER,
+  trace_id TEXT,
+  request_id TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(project_id, event_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_project_id ON api_keys(project_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_key_prefix ON api_keys(key_prefix);
 CREATE INDEX IF NOT EXISTS idx_worker_jobs_status ON worker_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_worker_jobs_job_type ON worker_jobs(job_type);
+CREATE INDEX IF NOT EXISTS idx_event_fingerprints_project_id ON event_fingerprints(project_id);
+CREATE INDEX IF NOT EXISTS idx_events_metadata_project_timestamp ON events_metadata(project_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_events_metadata_filters ON events_metadata(project_id, service, environment, level);
 
 -- Later phases add:
--- event_fingerprints, metric_rollups, anomalies, incidents,
--- incident_events, and alerts.
+-- metric_rollups, anomalies, incidents, incident_events, and alerts.
