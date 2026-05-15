@@ -1,6 +1,6 @@
 # API Reference
 
-Phase 1 includes service health, user auth, project management, and hashed API key management.
+Phase 2 includes service health, user auth, project management, hashed API key management, and async event ingestion.
 
 ## Implemented
 
@@ -89,10 +89,81 @@ Lists masked API keys. Raw keys and hashes are never returned.
 
 Revokes a key by setting `revoked_at`.
 
+## Event Ingestion
+
+Public ingestion uses project API keys, not dashboard JWTs.
+
+### `POST /v1/events`
+
+Requires `Authorization: Bearer <raw_project_api_key>`.
+
+```json
+{
+  "eventId": "evt_123_optional_client_id",
+  "timestamp": "2026-05-15T15:45:00Z",
+  "service": "payment-api",
+  "environment": "production",
+  "level": "error",
+  "message": "Stripe checkout timeout while creating session",
+  "statusCode": 504,
+  "latencyMs": 2380,
+  "traceId": "trace_abc123",
+  "requestId": "req_789",
+  "metadata": {
+    "route": "/checkout",
+    "region": "us-east-1"
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "eventId": "evt_123_optional_client_id",
+  "jobId": "97b3f0d5-7f7c-4a1f-b7de-7f91f4f30172",
+  "status": "accepted"
+}
+```
+
+### `POST /v1/events/batch`
+
+Requires `Authorization: Bearer <raw_project_api_key>`.
+
+```json
+{
+  "events": [
+    {
+      "service": "payment-api",
+      "level": "info",
+      "message": "Checkout completed"
+    },
+    {
+      "service": "payment-api",
+      "level": "warn",
+      "message": "Payment provider latency elevated",
+      "latencyMs": 840
+    }
+  ]
+}
+```
+
+Response:
+
+```json
+{
+  "acceptedCount": 2,
+  "jobIds": ["job_1", "job_2"],
+  "status": "accepted"
+}
+```
+
+Invalid API keys return `401`, validation failures return `422`, and rate limits return `429` with `Retry-After`.
+
 ## Placeholders
 
 - `/v1/events/status`
 - `/metrics/status`
 - `/incidents/status`
 
-Future phases will replace placeholders with implemented ingestion, metrics, anomaly, and incident endpoints.
+Future phases will replace remaining placeholders with metrics, anomaly, and incident endpoints.

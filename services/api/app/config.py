@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     clickhouse_database: str = ""
     gemini_api_key: str = ""
     discord_webhook_url: str = ""
+    ingest_rate_limit_per_minute: int = 60
+    ingest_rate_limit_per_ip_minute: int = 120
+    ingest_max_batch_size: int = 25
+    ingest_max_message_length: int = 2000
+    ingest_max_metadata_bytes: int = 8192
+    local_queue_path: str = "../../tmp/signalforge-events.jsonl"
 
     model_config = SettingsConfigDict(
         env_file=".env",

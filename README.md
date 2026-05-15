@@ -2,13 +2,13 @@
 
 SignalForge is a portfolio-scale observability platform for application events. The full system is designed to ingest logs and events, process them asynchronously, detect anomalies, group incidents, generate AI incident summaries, send alerts, and expose pipeline health.
 
-Phase 1 implements the secure metadata foundation. It includes registration/login, JWT-authenticated project management, hashed ingestion API keys that reveal the raw key only once, an importable Python worker skeleton, local infrastructure configuration, documentation, and CI.
+Phase 2 implements the public ingestion path. It includes registration/login, JWT-authenticated project management, hashed ingestion API keys that reveal the raw key only once, event payload validation, API-key ingestion auth, rate limiting, async queue abstraction, worker job tracking, local JSONL queue fallback, documentation, and CI.
 
 ## Why This Is Not a Simple Log Viewer
 
 The project is planned around a distributed event pipeline rather than a raw log table. The intended architecture separates request-time ingestion from background processing, analytics storage, incident grouping, AI summary generation, alert delivery, and internal pipeline observability.
 
-Phase 1 does not implement event ingestion, queue processing, anomaly detection, AI summaries, alerts, or pipeline observability yet. The repository structure and docs are prepared so each phase can add them without turning the project into a dashboard-only app.
+Phase 2 accepts and queues events, but it does not process analytics in the request path. Worker normalization, event storage, anomaly detection, AI summaries, alerts, and pipeline observability are later phases.
 
 ## Architecture Placeholder
 
@@ -27,11 +27,11 @@ Client app
 
 | Layer | Technology | Phase 0 Status |
 | --- | --- | --- |
-| Frontend | SvelteKit, TypeScript, Tailwind CSS | Auth, project, and API key screens |
-| Backend API | FastAPI, Pydantic settings | Health, auth, project, and API key routes |
+| Frontend | SvelteKit, TypeScript, Tailwind CSS | Auth, project, API key, and ingestion instruction screens |
+| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, and ingestion routes |
 | Worker | Python | Importable local polling placeholder |
-| Metadata DB | PostgreSQL/Neon | Users, projects, and api_keys migration |
-| Queue | Redis/QStash-compatible | Planned abstraction |
+| Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, and worker_jobs migration |
+| Queue | Redis/QStash-compatible | Queue abstraction with local JSONL fallback |
 | Event Store | ClickHouse/Tinybird-compatible | Schema placeholder |
 | AI | Gemini API | Planned integration |
 | Alerts | Discord Webhooks | Planned integration |
@@ -136,6 +136,18 @@ cd services/worker && python -m pytest
 ```
 
 Phase 1 API tests cover registration, duplicate email rejection, login, invalid login, project creation, cross-user project isolation, one-time raw API key creation, masked key listing, and revocation.
+
+Phase 2 API tests cover valid ingestion, missing/invalid/revoked API keys, invalid event fields, oversized payload fields, rate limiting, and batch ingestion.
+
+## Demo Ingestion
+
+After starting the API and creating a project API key, send demo events:
+
+```bash
+python scripts/send_demo_events.py --api-url http://localhost:8000 --project-key sf_demo_your_key
+```
+
+The API validates the request, applies rate limits, records a queued `worker_jobs` row, writes the job to the configured queue fallback, and returns `202 Accepted` with a job ID. Analytics, AI, and alerting are intentionally outside this request path.
 
 ## Deployment Plan Placeholder
 

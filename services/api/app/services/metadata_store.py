@@ -6,6 +6,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 from app.database import get_pool
 from app.utils.security import slugify
@@ -55,6 +56,21 @@ class ApiKeyRecord:
         return self.revoked_at is not None
 
 
+@dataclass(frozen=True)
+class WorkerJobRecord:
+    id: str
+    job_type: str
+    entity_id: str | None
+    status: str
+    attempts: int
+    max_attempts: int
+    error_message: str | None
+    payload: dict | None
+    created_at: str
+    started_at: str | None
+    completed_at: str | None
+
+
 class MetadataStore(Protocol):
     async def create_user(self, email: str, password_hash: str) -> UserRecord: ...
     async def get_user_by_email(self, email: str) -> UserRecord | None: ...
@@ -85,7 +101,16 @@ class MetadataStore(Protocol):
     ) -> ApiKeyRecord: ...
     async def list_api_keys(self, project_id: str) -> list[ApiKeyRecord]: ...
     async def get_api_key(self, key_id: str) -> ApiKeyRecord | None: ...
+    async def get_api_key_by_prefix(self, key_prefix: str) -> ApiKeyRecord | None: ...
+    async def mark_api_key_used(self, key_id: str) -> ApiKeyRecord | None: ...
     async def revoke_api_key(self, key_id: str) -> ApiKeyRecord | None: ...
+    async def create_worker_job(
+        self,
+        job_type: str,
+        entity_id: str | None,
+        payload: dict,
+        max_attempts: int,
+    ) -> WorkerJobRecord: ...
 
 
 def utc_now() -> str:
@@ -97,6 +122,7 @@ class InMemoryMetadataStore:
         self.users: dict[str, UserRecord] = {}
         self.projects: dict[str, ProjectRecord] = {}
         self.api_keys: dict[str, ApiKeyRecord] = {}
+        self.worker_jobs: dict[str, WorkerJobRecord] = {}
 
     async def create_user(self, email: str, password_hash: str) -> UserRecord:
         if await self.get_user_by_email(email):
@@ -204,6 +230,27 @@ class InMemoryMetadataStore:
     async def get_api_key(self, key_id: str) -> ApiKeyRecord | None:
         return self.api_keys.get(key_id)
 
+    async def get_api_key_by_prefix(self, key_prefix: str) -> ApiKeyRecord | None:
+        return next((key for key in self.api_keys.values() if key.key_prefix == key_prefix), None)
+
+    async def mark_api_key_used(self, key_id: str) -> ApiKeyRecord | None:
+        api_key = self.api_keys.get(key_id)
+        if api_key is None:
+            return None
+
+        used = ApiKeyRecord(
+            id=api_key.id,
+            project_id=api_key.project_id,
+            name=api_key.name,
+            key_hash=api_key.key_hash,
+            key_prefix=api_key.key_prefix,
+            created_at=api_key.created_at,
+            last_used_at=utc_now(),
+            revoked_at=api_key.revoked_at,
+        )
+        self.api_keys[key_id] = used
+        return used
+
     async def revoke_api_key(self, key_id: str) -> ApiKeyRecord | None:
         api_key = self.api_keys.get(key_id)
         if api_key is None:
@@ -221,6 +268,29 @@ class InMemoryMetadataStore:
         )
         self.api_keys[key_id] = revoked
         return revoked
+
+    async def create_worker_job(
+        self,
+        job_type: str,
+        entity_id: str | None,
+        payload: dict,
+        max_attempts: int,
+    ) -> WorkerJobRecord:
+        job = WorkerJobRecord(
+            id=str(uuid4()),
+            job_type=job_type,
+            entity_id=entity_id,
+            status="queued",
+            attempts=0,
+            max_attempts=max_attempts,
+            error_message=None,
+            payload=payload,
+            created_at=utc_now(),
+            started_at=None,
+            completed_at=None,
+        )
+        self.worker_jobs[job.id] = job
+        return job
 
     def _unique_slug(
         self,
@@ -442,6 +512,37 @@ class PostgresMetadataStore:
                 row = await cur.fetchone()
         return _api_key_from_row(row) if row else None
 
+    async def get_api_key_by_prefix(self, key_prefix: str) -> ApiKeyRecord | None:
+        async with (await get_pool()).connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT id::text, project_id::text, name, key_hash, key_prefix,
+                           created_at::text, last_used_at::text, revoked_at::text
+                    FROM api_keys
+                    WHERE key_prefix = %s
+                    """,
+                    (key_prefix,),
+                )
+                row = await cur.fetchone()
+        return _api_key_from_row(row) if row else None
+
+    async def mark_api_key_used(self, key_id: str) -> ApiKeyRecord | None:
+        async with (await get_pool()).connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    UPDATE api_keys
+                    SET last_used_at = now()
+                    WHERE id = %s
+                    RETURNING id::text, project_id::text, name, key_hash, key_prefix,
+                              created_at::text, last_used_at::text, revoked_at::text
+                    """,
+                    (key_id,),
+                )
+                row = await cur.fetchone()
+        return _api_key_from_row(row) if row else None
+
     async def revoke_api_key(self, key_id: str) -> ApiKeyRecord | None:
         async with (await get_pool()).connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
@@ -457,6 +558,30 @@ class PostgresMetadataStore:
                 )
                 row = await cur.fetchone()
         return _api_key_from_row(row) if row else None
+
+    async def create_worker_job(
+        self,
+        job_type: str,
+        entity_id: str | None,
+        payload: dict,
+        max_attempts: int,
+    ) -> WorkerJobRecord:
+        job_id = str(uuid4())
+        async with (await get_pool()).connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    INSERT INTO worker_jobs
+                      (id, job_type, entity_id, status, attempts, max_attempts, payload)
+                    VALUES (%s, %s, %s, 'queued', 0, %s, %s)
+                    RETURNING id::text, job_type, entity_id::text, status, attempts,
+                              max_attempts, error_message, payload, created_at::text,
+                              started_at::text, completed_at::text
+                    """,
+                    (job_id, job_type, entity_id, max_attempts, Jsonb(payload)),
+                )
+                row = await cur.fetchone()
+        return _worker_job_from_row(row)
 
 
 def _user_from_row(row) -> UserRecord:
@@ -491,4 +616,20 @@ def _api_key_from_row(row) -> ApiKeyRecord:
         created_at=str(row["created_at"]),
         last_used_at=str(row["last_used_at"]) if row["last_used_at"] else None,
         revoked_at=str(row["revoked_at"]) if row["revoked_at"] else None,
+    )
+
+
+def _worker_job_from_row(row) -> WorkerJobRecord:
+    return WorkerJobRecord(
+        id=str(row["id"]),
+        job_type=row["job_type"],
+        entity_id=str(row["entity_id"]) if row["entity_id"] else None,
+        status=row["status"],
+        attempts=row["attempts"],
+        max_attempts=row["max_attempts"],
+        error_message=row["error_message"],
+        payload=row["payload"],
+        created_at=str(row["created_at"]),
+        started_at=str(row["started_at"]) if row["started_at"] else None,
+        completed_at=str(row["completed_at"]) if row["completed_at"] else None,
     )

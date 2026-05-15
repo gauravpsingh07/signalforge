@@ -11,6 +11,11 @@
   import { readAccessToken } from '$lib/stores/auth';
 
   const projectId = $derived(page.params.projectId ?? '');
+  const curlExample =
+    'curl -X POST http://localhost:8000/v1/events \\\n' +
+    '  -H "Authorization: Bearer sf_demo_your_key" \\\n' +
+    '  -H "Content-Type: application/json" \\\n' +
+    '  -d \'{"eventId":"evt_123","service":"payment-api","environment":"production","level":"error","message":"Checkout timeout","statusCode":504,"latencyMs":2380,"metadata":{"route":"/checkout"}}\'';
 
   let token = $state('');
   let keys = $state<ApiKey[]>([]);
@@ -105,6 +110,30 @@
       </button>
     </form>
   {/if}
+
+  <div class="surface rounded-lg p-5">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold">Ingestion</h2>
+        <p class="mt-2 text-sm text-slate-500">
+          Send events to the FastAPI ingestion endpoint with a project API key. The API validates,
+          rate-limits, queues, and returns before worker processing.
+        </p>
+      </div>
+      <a class="rounded border border-slate-300 px-3 py-2 text-sm font-medium" href={`/projects/${projectId}/events`}>
+        Events
+      </a>
+    </div>
+
+    <div class="mt-4 grid gap-4 lg:grid-cols-2">
+      <pre class="overflow-x-auto rounded bg-slate-950 p-4 text-xs leading-6 text-slate-100"><code>{curlExample}</code></pre>
+      <div class="rounded border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+        Keep ingestion keys server-side. Do not ship them in public frontend code, mobile apps, or
+        screenshots. Raw keys are shown only once when created; the list below only shows masked
+        prefixes.
+      </div>
+    </div>
+  </div>
 
   {#if createdKey}
     <div class="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900">
