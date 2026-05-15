@@ -1,0 +1,39 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Node/SvelteKit
+node_modules/
+.svelte-kit/
+.vite/
+apps/web/build/
+apps/web/.vercel/
+apps/web/.netlify/
+
+# Local data and logs
+*.log
+*.sqlite
+*.db
+tmp/
+coverage/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+*.docx

@@ -1,0 +1,24 @@
+-- SignalForge intended event analytics schema.
+-- Keep this as the ClickHouse/Tinybird-compatible target until event storage is implemented.
+
+-- CREATE TABLE events (
+--   event_id String,
+--   project_id String,
+--   api_key_prefix String,
+--   timestamp DateTime64(3),
+--   received_at DateTime64(3),
+--   service LowCardinality(String),
+--   environment LowCardinality(String),
+--   level LowCardinality(String),
+--   message String,
+--   normalized_message String,
+--   fingerprint_hash String,
+--   status_code Nullable(UInt16),
+--   latency_ms Nullable(UInt32),
+--   trace_id Nullable(String),
+--   request_id Nullable(String),
+--   metadata String
+-- )
+-- ENGINE = MergeTree
+-- PARTITION BY toDate(timestamp)
+-- ORDER BY (project_id, service, timestamp, level);

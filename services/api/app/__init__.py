@@ -1,0 +1,1 @@
+"""SignalForge FastAPI service package."""
