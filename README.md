@@ -2,13 +2,13 @@
 
 SignalForge is a portfolio-scale observability platform for application events. The full system is designed to ingest logs and events, process them asynchronously, detect anomalies, group incidents, generate AI incident summaries, send alerts, and expose pipeline health.
 
-Phase 3 implements worker event processing. It includes registration/login, JWT-authenticated project management, hashed ingestion API keys, event payload validation, API-key ingestion auth, rate limiting, async queue abstraction, worker job tracking, local queue consumption, event normalization, deterministic fingerprinting, idempotent event storage, and an event explorer.
+Phase 4 implements metric rollups and the core dashboard. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, dashboard project cards, and an event explorer.
 
 ## Why This Is Not a Simple Log Viewer
 
 The project is planned around a distributed event pipeline rather than a raw log table. The intended architecture separates request-time ingestion from background processing, analytics storage, incident grouping, AI summary generation, alert delivery, and internal pipeline observability.
 
-Phase 3 accepts and queues events in the API, then processes them in the worker. It does not build metric rollups, anomaly detection, incident grouping, AI summaries, alerts, or pipeline observability yet.
+Phase 4 turns processed events into dashboard metrics. It does not build anomaly detection, incident grouping, AI summaries, alerts, or pipeline observability yet.
 
 ## Architecture Placeholder
 
@@ -27,10 +27,10 @@ Client app
 
 | Layer | Technology | Phase 0 Status |
 | --- | --- | --- |
-| Frontend | SvelteKit, TypeScript, Tailwind CSS | Auth, project, API key, ingestion, and event explorer screens |
-| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, and event search routes |
-| Worker | Python | Queue consumer, normalization, fingerprinting, event storage |
-| Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints |
+| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, event explorer |
+| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, event search, metrics |
+| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups |
+| Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups |
 | Queue | Redis/QStash-compatible | Queue abstraction with local JSONL fallback |
 | Event Store | ClickHouse/Tinybird-compatible | Schema placeholder |
 | AI | Gemini API | Planned integration |
@@ -143,12 +143,14 @@ Phase 2 API tests cover valid ingestion, missing/invalid/revoked API keys, inval
 
 Phase 3 worker tests cover message normalization, stable fingerprints, successful processing, failed/dead-letter jobs, and duplicate `eventId` idempotency. API tests cover processed event search and ownership.
 
+Phase 4 tests cover rollup bucket calculation, error rate calculation, latency avg/p95 calculation, and metrics endpoint ownership.
+
 ## Demo Ingestion
 
 After starting the API and creating a project API key, send demo events:
 
 ```bash
-python scripts/send_demo_events.py --api-url http://localhost:8000 --project-key sf_demo_your_key
+python scripts/send_demo_events.py --api-url http://localhost:8000 --project-key sf_demo_your_key --count 40
 ```
 
 The API validates the request, applies rate limits, records a queued `worker_jobs` row, writes the job to the configured queue fallback, and returns `202 Accepted` with a job ID. Analytics, AI, and alerting are intentionally outside this request path.
@@ -161,6 +163,17 @@ python -m app.worker --once
 ```
 
 Processed events are written to the configured local event store fallback or PostgreSQL when `DATABASE_URL` is set, then shown in `/projects/{projectId}/events`.
+
+Metric rollups are updated by the worker in 60-second buckets and shown in `/projects/{projectId}`.
+
+## Screenshots
+
+After later polish, capture screenshots for:
+
+- Dashboard project cards.
+- Project overview charts.
+- Event explorer with selected event details.
+- Project settings with ingestion instructions.
 
 ## Deployment Plan Placeholder
 

@@ -1,6 +1,6 @@
 # API Reference
 
-Phase 3 includes service health, user auth, project management, hashed API key management, async event ingestion, and processed event search.
+Phase 4 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, and metrics.
 
 ## Implemented
 
@@ -198,10 +198,48 @@ Response:
 }
 ```
 
+## Metrics
+
+### `GET /projects/{project_id}/metrics`
+
+Requires dashboard JWT auth. Returns dashboard-friendly rollups for an owned project.
+
+Query params:
+
+- `range`: `1h`, `6h`, or `24h`
+- `service`
+- `environment`
+- `bucketSize`: default `60`
+
+Response:
+
+```json
+{
+  "range": "1h",
+  "bucketSize": 60,
+  "summary": {
+    "totalEvents": 42,
+    "errorEvents": 3,
+    "warningEvents": 5,
+    "fatalEvents": 0,
+    "latencyP95Ms": 900,
+    "errorRate": 0.071,
+    "activeIncidents": 0
+  },
+  "series": [],
+  "services": ["payment-api"],
+  "topServices": []
+}
+```
+
+### `GET /projects/{project_id}/services`
+
+Returns services with rollup data for filter controls.
+
 ## Placeholders
 
 - `/v1/events/status`
 - `/metrics/status`
 - `/incidents/status`
 
-Future phases will replace remaining placeholders with metrics, anomaly, and incident endpoints.
+Future phases will replace remaining placeholders with anomaly and incident endpoints.

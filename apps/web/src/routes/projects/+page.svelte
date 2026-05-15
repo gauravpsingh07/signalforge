@@ -102,7 +102,7 @@
           {#each projects as project}
             <tr class="border-t border-slate-100">
               <td class="px-4 py-3">
-                <a class="font-medium text-signal hover:underline" href={`/projects/${project.id}/settings`}>
+                <a class="font-medium text-signal hover:underline" href={`/projects/${project.id}`}>
                   {project.name}
                 </a>
                 <p class="text-xs text-slate-500">{project.slug}</p>

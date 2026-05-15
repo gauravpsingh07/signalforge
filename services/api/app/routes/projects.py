@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.dependencies import get_current_user, get_metadata_store
 from app.schemas.project import ProjectCreateRequest, ProjectPublic, ProjectUpdateRequest
 from app.services.event_store_service import EventStoreService
+from app.services.metrics_service import MetricsService
 from app.services.metadata_store import (
     DuplicateProjectSlugError,
     MetadataStore,
@@ -78,6 +79,41 @@ async def list_project_events(
         limit=bounded_limit,
     )
     return {"events": events}
+
+
+@router.get("/{project_id}/metrics")
+async def get_project_metrics(
+    project_id: str,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    store: Annotated[MetadataStore, Depends(get_metadata_store)],
+    range: str = "1h",
+    service: str | None = None,
+    environment: str | None = None,
+    bucketSize: int = 60,
+) -> dict:
+    project = await store.get_project(project_id, current_user.id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return MetricsService().get_project_metrics(
+        project_id=project.id,
+        range_value=range,
+        service=service,
+        environment=environment,
+        bucket_size=bucketSize,
+    )
+
+
+@router.get("/{project_id}/services")
+async def get_project_services(
+    project_id: str,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    store: Annotated[MetadataStore, Depends(get_metadata_store)],
+) -> dict:
+    project = await store.get_project(project_id, current_user.id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    metrics = MetricsService().get_project_metrics(project_id=project.id)
+    return {"services": metrics["services"]}
 
 
 @router.get("/{project_id}", response_model=ProjectPublic)

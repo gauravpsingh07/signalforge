@@ -12,9 +12,9 @@
 8. Discord alerts are sent for critical incidents and recoveries.
 9. The SvelteKit dashboard shows service health, events, incidents, and pipeline health.
 
-## Phase 3 Scope
+## Phase 4 Scope
 
-Phase 3 adds worker processing on top of the ingestion path:
+Phase 4 adds service-level metric rollups and the core dashboard on top of worker processing:
 
 - Monorepo structure.
 - SvelteKit login, dashboard, project list, and project API key settings screens.
@@ -35,11 +35,15 @@ Phase 3 adds worker processing on top of the ingestion path:
 - Idempotent event storage with local JSONL fallback and PostgreSQL `events_metadata`.
 - Fingerprint updates with local JSON fallback and PostgreSQL `event_fingerprints`.
 - Event search API and frontend event explorer.
-- PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, and event_fingerprints.
+- Worker-updated 60-second rollup buckets.
+- Metrics API for dashboard time series, service list, error rate, p95 latency, and active incident placeholder.
+- Project overview charts and service health table.
+- Dashboard project cards with recent event volume and error rate.
+- PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, and metric_rollups.
 - Docker Compose for local Postgres and Redis.
 - GitHub Actions skeleton.
 
-No metric rollups, anomaly detection, incident grouping, AI summaries, or alerts are implemented in Phase 3.
+No anomaly detection, incident grouping, AI summaries, alerts, or pipeline-health dashboard are implemented in Phase 4.
 
 ## API Key Hashing and Ownership Model
 
@@ -56,3 +60,7 @@ The ingestion API authenticates the raw project key, validates the event, applie
 The worker reads queued jobs from the same local JSONL or Redis/Upstash-style queue abstraction used by the API. Each event is normalized, fingerprinted, stored idempotently, and marked complete. Failed jobs increment attempts and move to `dead_letter` after the configured maximum attempts.
 
 Client-provided `eventId` values are used for idempotency per project. Repeated timeout messages with different request IDs, UUIDs, timestamps, or variable numbers normalize to the same fingerprint input.
+
+## Metric Rollups
+
+After a worker stores a new event, it updates the matching `project_id + service + environment + bucket_start + bucket_size_seconds` rollup. The local fallback stores latency samples so avg and p95 can be computed exactly for portfolio-scale demos. The PostgreSQL path recomputes the current bucket from `events_metadata` after each event, which is simple and reliable at demo scale and keeps the logic modular for a future ClickHouse/Tinybird query implementation.

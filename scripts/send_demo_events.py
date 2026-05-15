@@ -1,45 +1,54 @@
 import argparse
 import json
+import random
 import sys
 import time
 import urllib.error
 import urllib.request
 
 
-def build_events() -> list[dict]:
+SERVICES = ["checkout-service", "payment-api", "auth-service", "notification-worker"]
+LEVELS = ["info", "info", "info", "warn", "error"]
+
+
+def build_events(count: int, service: str | None, environment: str) -> list[dict]:
     now_ms = int(time.time() * 1000)
-    return [
-        {
-            "eventId": f"evt_demo_{now_ms}_info",
-            "service": "checkout-service",
-            "environment": "production",
-            "level": "info",
-            "message": "Checkout page loaded",
-            "statusCode": 200,
-            "latencyMs": 128,
-            "metadata": {"route": "/checkout", "region": "local"},
-        },
-        {
-            "eventId": f"evt_demo_{now_ms}_warn",
-            "service": "payment-api",
-            "environment": "production",
-            "level": "warn",
-            "message": "Payment provider response slower than usual",
-            "statusCode": 202,
-            "latencyMs": 840,
-            "metadata": {"provider": "demo-pay", "region": "local"},
-        },
-        {
-            "eventId": f"evt_demo_{now_ms}_error",
-            "service": "notification-worker",
-            "environment": "production",
-            "level": "error",
-            "message": "Email delivery retry scheduled",
-            "statusCode": 500,
-            "latencyMs": 1450,
-            "metadata": {"queue": "email", "attempt": 1},
-        },
-    ]
+    events = []
+    for index in range(count):
+        event_service = service or SERVICES[index % len(SERVICES)]
+        level = LEVELS[index % len(LEVELS)]
+        status_code = 500 if level == "error" else 202 if level == "warn" else 200
+        latency_ms = random.randint(80, 350) if level == "info" else random.randint(650, 1800)
+        events.append(
+            {
+                "eventId": f"evt_demo_{now_ms}_{index}",
+                "service": event_service,
+                "environment": environment,
+                "level": level,
+                "message": message_for(event_service, level),
+                "statusCode": status_code,
+                "latencyMs": latency_ms,
+                "metadata": {"route": route_for(event_service), "region": "local", "sample": index},
+            }
+        )
+    return events
+
+
+def message_for(service: str, level: str) -> str:
+    if level == "error":
+        return f"{service} request failed after retry"
+    if level == "warn":
+        return f"{service} latency higher than usual"
+    return f"{service} handled request successfully"
+
+
+def route_for(service: str) -> str:
+    return {
+        "checkout-service": "/checkout",
+        "payment-api": "/payments",
+        "auth-service": "/login",
+        "notification-worker": "email-queue",
+    }.get(service, "/demo")
 
 
 def post_event(api_url: str, project_key: str, event: dict) -> dict:
@@ -60,11 +69,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Send SignalForge demo events.")
     parser.add_argument("--project-key", required=True, help="Raw SignalForge ingestion API key.")
     parser.add_argument("--api-url", default="http://localhost:8000", help="SignalForge API base URL.")
+    parser.add_argument("--count", type=int, default=24, help="Number of demo events to send.")
+    parser.add_argument("--service", help="Optional service name to use for every event.")
+    parser.add_argument("--environment", default="production", help="Event environment.")
     args = parser.parse_args()
 
-    print(f"Sending {len(build_events())} demo events to {args.api_url}")
+    events = build_events(max(1, args.count), args.service, args.environment)
+    print(f"Sending {len(events)} demo events to {args.api_url}")
     try:
-        for event in build_events():
+        for event in events:
             accepted = post_event(args.api_url, args.project_key, event)
             print(f"accepted eventId={accepted['eventId']} jobId={accepted['jobId']}")
     except urllib.error.HTTPError as exc:

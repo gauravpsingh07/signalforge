@@ -84,6 +84,23 @@ CREATE TABLE IF NOT EXISTS events_metadata (
   UNIQUE(project_id, event_id)
 );
 
+CREATE TABLE IF NOT EXISTS metric_rollups (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  service TEXT NOT NULL,
+  environment TEXT NOT NULL,
+  bucket_start TIMESTAMPTZ NOT NULL,
+  bucket_size_seconds INTEGER NOT NULL DEFAULT 60,
+  total_events INTEGER NOT NULL DEFAULT 0,
+  error_events INTEGER NOT NULL DEFAULT 0,
+  warning_events INTEGER NOT NULL DEFAULT 0,
+  fatal_events INTEGER NOT NULL DEFAULT 0,
+  latency_avg_ms NUMERIC,
+  latency_p95_ms NUMERIC,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(project_id, service, environment, bucket_start, bucket_size_seconds)
+);
+
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_project_id ON api_keys(project_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_key_prefix ON api_keys(key_prefix);
@@ -92,6 +109,7 @@ CREATE INDEX IF NOT EXISTS idx_worker_jobs_job_type ON worker_jobs(job_type);
 CREATE INDEX IF NOT EXISTS idx_event_fingerprints_project_id ON event_fingerprints(project_id);
 CREATE INDEX IF NOT EXISTS idx_events_metadata_project_timestamp ON events_metadata(project_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_events_metadata_filters ON events_metadata(project_id, service, environment, level);
+CREATE INDEX IF NOT EXISTS idx_metric_rollups_project_bucket ON metric_rollups(project_id, bucket_start DESC);
 
 -- Later phases add:
--- metric_rollups, anomalies, incidents, incident_events, and alerts.
+-- anomalies, incidents, incident_events, and alerts.

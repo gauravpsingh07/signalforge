@@ -69,6 +69,42 @@ export type ProcessedEvent = {
   metadata: Record<string, unknown>;
 };
 
+export type MetricBucket = {
+  bucketStart: string;
+  service: string;
+  environment: string;
+  totalEvents: number;
+  errorEvents: number;
+  warningEvents: number;
+  fatalEvents: number;
+  errorRate: number;
+  latencyAvgMs: number | null;
+  latencyP95Ms: number | null;
+};
+
+export type MetricsResponse = {
+  range: string;
+  bucketSize: number;
+  summary: {
+    totalEvents: number;
+    errorEvents: number;
+    warningEvents: number;
+    fatalEvents: number;
+    latencyP95Ms: number | null;
+    errorRate: number;
+    activeIncidents: number;
+  };
+  series: MetricBucket[];
+  services: string[];
+  topServices: Array<{
+    service: string;
+    totalEvents: number;
+    errorEvents: number;
+    fatalEvents: number;
+    errorRate: number;
+  }>;
+};
+
 const API_BASE_URL = env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 async function apiRequest<T>(
@@ -191,6 +227,20 @@ export function listEvents(
   }
   const suffix = params.toString() ? `?${params.toString()}` : '';
   return apiRequest<{ events: ProcessedEvent[] }>(`/projects/${projectId}/events${suffix}`, {}, token);
+}
+
+export function getProjectMetrics(
+  token: string,
+  projectId: string,
+  filters: { range?: string; service?: string; environment?: string; bucketSize?: number } = {}
+): Promise<MetricsResponse> {
+  const params = new URLSearchParams();
+  if (filters.range) params.set('range', filters.range);
+  if (filters.service) params.set('service', filters.service);
+  if (filters.environment) params.set('environment', filters.environment);
+  if (filters.bucketSize) params.set('bucketSize', String(filters.bucketSize));
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest<MetricsResponse>(`/projects/${projectId}/metrics${suffix}`, {}, token);
 }
 
 export { API_BASE_URL };

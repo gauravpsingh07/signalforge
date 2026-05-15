@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { createProject, listProjects, type Project } from '$lib/api/client';
+  import { createProject, getProjectMetrics, listProjects, type MetricsResponse, type Project } from '$lib/api/client';
   import { readAccessToken } from '$lib/stores/auth';
 
   let projects = $state<Project[]>([]);
@@ -10,6 +10,7 @@
   let error = $state('');
   let loading = $state(true);
   let saving = $state(false);
+  let projectMetrics = $state<Record<string, MetricsResponse>>({});
 
   async function loadProjects() {
     token = readAccessToken();
@@ -20,6 +21,16 @@
 
     try {
       projects = await listProjects(token);
+      const entries = await Promise.all(
+        projects.map(async (project) => {
+          try {
+            return [project.id, await getProjectMetrics(token, project.id)] as const;
+          } catch {
+            return [project.id, null] as const;
+          }
+        })
+      );
+      projectMetrics = Object.fromEntries(entries.filter((entry) => entry[1] !== null));
     } catch (err) {
       error = err instanceof Error ? err.message : 'Unable to load projects';
     } finally {
@@ -39,6 +50,7 @@
         description: description || undefined
       });
       projects = [project, ...projects];
+      projectMetrics = { ...projectMetrics, [project.id]: await getProjectMetrics(token, project.id) };
       name = '';
       description = '';
     } catch (err) {
@@ -70,8 +82,10 @@
     </article>
     <article class="surface rounded-lg p-5">
       <p class="text-sm text-slate-500">Events Today</p>
-      <p class="mt-3 text-3xl font-semibold">0</p>
-      <p class="mt-2 text-sm text-slate-500">Ingestion starts in Phase 2</p>
+      <p class="mt-3 text-3xl font-semibold">
+        {Object.values(projectMetrics).reduce((sum, metric) => sum + metric.summary.totalEvents, 0)}
+      </p>
+      <p class="mt-2 text-sm text-slate-500">Processed rollups</p>
     </article>
   </div>
 
@@ -124,14 +138,20 @@
         {:else}
           <div class="mt-4 grid gap-3">
             {#each projects as project}
-              <a class="rounded border border-slate-200 bg-white p-4 hover:border-signal" href={`/projects/${project.id}/settings`}>
+              <a class="rounded border border-slate-200 bg-white p-4 hover:border-signal" href={`/projects/${project.id}`}>
                 <div class="flex items-center justify-between gap-3">
                   <div>
                     <p class="font-semibold">{project.name}</p>
                     <p class="text-sm text-slate-500">{project.slug}</p>
                   </div>
-                  <span class="rounded bg-slate-100 px-3 py-1 text-sm text-slate-600">{project.environment_default}</span>
+                  <div class="text-right text-sm">
+                    <p class="font-semibold">{projectMetrics[project.id]?.summary.totalEvents ?? 0} events</p>
+                    <p class="text-slate-500">
+                      {Math.round(((projectMetrics[project.id]?.summary.errorRate ?? 0) * 1000)) / 10}% errors
+                    </p>
+                  </div>
                 </div>
+                <p class="mt-3 text-xs text-slate-500">Incident status placeholder: none active</p>
               </a>
             {/each}
           </div>

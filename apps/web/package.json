@@ -10,10 +10,10 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
-    "@types/node": "latest",
     "@sveltejs/adapter-auto": "latest",
     "@sveltejs/kit": "latest",
     "@sveltejs/vite-plugin-svelte": "latest",
+    "@types/node": "latest",
     "autoprefixer": "latest",
     "postcss": "latest",
     "svelte": "latest",
@@ -22,5 +22,8 @@
     "tslib": "latest",
     "typescript": "latest",
     "vite": "latest"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1"
   }
 }

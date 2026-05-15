@@ -5,6 +5,7 @@ from app.services.event_normalizer import normalize_event_job
 from app.services.event_store_service import EventStoreService
 from app.services.fingerprint_store_service import FingerprintStoreService
 from app.services.job_status_service import LocalJobStatusService
+from app.services.metric_rollup_service import MetricRollupService
 from app.services.queue_service import QueueConsumer
 
 
@@ -14,11 +15,13 @@ class EventJobProcessor:
         queue: QueueConsumer | None = None,
         event_store: EventStoreService | None = None,
         fingerprint_store: FingerprintStoreService | None = None,
+        metric_rollups: MetricRollupService | None = None,
         job_status: LocalJobStatusService | None = None,
     ) -> None:
         self.queue = queue or QueueConsumer()
         self.event_store = event_store or EventStoreService()
         self.fingerprint_store = fingerprint_store or FingerprintStoreService()
+        self.metric_rollups = metric_rollups or MetricRollupService()
         self.job_status = job_status or LocalJobStatusService()
 
     async def process_next(self) -> dict[str, Any]:
@@ -40,6 +43,7 @@ class EventJobProcessor:
             inserted = await self.event_store.store_event(event)
             if inserted:
                 self.fingerprint_store.update(event)
+                self.metric_rollups.update_for_event(event)
             self.job_status.mark(job_id, "completed", attempts)
             return {
                 "processed": True,

@@ -22,6 +22,7 @@ class WorkerSettings(BaseSettings):
     local_event_store_path: str = "../../tmp/signalforge-processed-events.jsonl"
     local_worker_jobs_path: str = "../../tmp/signalforge-worker-jobs.json"
     local_fingerprints_path: str = "../../tmp/signalforge-fingerprints.json"
+    local_metric_rollups_path: str = "../../tmp/signalforge-metric-rollups.json"
     ingest_max_metadata_bytes: int = 8192
 
     model_config = SettingsConfigDict(
