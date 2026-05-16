@@ -2,13 +2,13 @@
 
 SignalForge is a portfolio-scale observability platform for application events. The full system is designed to ingest logs and events, process them asynchronously, detect anomalies, group incidents, generate AI incident summaries, send alerts, and expose pipeline health.
 
-Phase 5 implements deterministic anomaly detection. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, anomaly views, and an event explorer.
+Phase 6 implements incident lifecycle and grouping. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, anomaly views, incident grouping, incident list/detail pages, manual resolution, and an event explorer.
 
 ## Why This Is Not a Simple Log Viewer
 
 The project is planned around a distributed event pipeline rather than a raw log table. The intended architecture separates request-time ingestion from background processing, analytics storage, incident grouping, AI summary generation, alert delivery, and internal pipeline observability.
 
-Phase 5 detects anomalies from rollups and fingerprints using Python logic. It does not build incident grouping, AI summaries, alerts, or pipeline observability yet.
+Phase 6 detects anomalies from rollups and fingerprints using Python logic, then groups related anomalies into incidents. It does not build Gemini AI summaries, Discord alerts, or pipeline observability yet.
 
 ## Architecture Placeholder
 
@@ -25,12 +25,12 @@ Client app
 
 ## Tech Stack
 
-| Layer | Technology | Phase 0 Status |
+| Layer | Technology | Current Status |
 | --- | --- | --- |
-| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, anomaly table, event explorer |
-| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, event search, metrics, anomalies |
-| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups, anomaly detection |
-| Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies |
+| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, anomaly table, incident pages, event explorer |
+| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, event search, metrics, anomalies, incidents |
+| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups, anomaly detection, incident grouping |
+| Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, incident_events |
 | Queue | Redis/QStash-compatible | Queue abstraction with local JSONL fallback |
 | Event Store | ClickHouse/Tinybird-compatible | Schema placeholder |
 | AI | Gemini API | Planned integration |
@@ -103,11 +103,11 @@ Do not commit real secrets or local `.env` files.
 
 1. Phase 0: Monorepo foundation. Implemented.
 2. Phase 1: Auth, projects, and hashed API keys. Implemented.
-3. Phase 2: Event ingestion, validation, rate limits, and queue abstraction. Planned.
-4. Phase 3: Worker processing, normalization, fingerprints, and event storage.
-5. Phase 4: Metrics dashboard and event explorer.
-6. Phase 5: Deterministic anomaly detection.
-7. Phase 6: Incident grouping and lifecycle.
+3. Phase 2: Event ingestion, validation, rate limits, and queue abstraction. Implemented.
+4. Phase 3: Worker processing, normalization, fingerprints, and event storage. Implemented.
+5. Phase 4: Metrics dashboard and event explorer. Implemented.
+6. Phase 5: Deterministic anomaly detection. Implemented.
+7. Phase 6: Incident grouping and lifecycle. Implemented.
 8. Phase 7: Gemini incident summaries.
 9. Phase 8: Discord alerts.
 10. Phase 9: Pipeline observability.
@@ -147,6 +147,8 @@ Phase 4 tests cover rollup bucket calculation, error rate calculation, latency a
 
 Phase 5 tests cover z-score calculation, error-rate spikes, latency spikes, repeated new fingerprints, fatal bursts, anomaly deduplication, and anomaly endpoint ownership.
 
+Phase 6 tests cover incident grouping, service separation, severity escalation, auto-resolution, resolved incident dedupe behavior, incident endpoint ownership, detail payloads, and manual resolution.
+
 ## Demo Ingestion
 
 After starting the API and creating a project API key, send demo events:
@@ -179,6 +181,14 @@ SignalForge does not use Gemini or any LLM to decide whether an anomaly exists. 
 
 Open anomalies are deduplicated by project, service, environment, type, window, and fingerprint.
 
+## Incident Lifecycle
+
+When the worker creates an anomaly, it passes the anomaly to the incident grouping service. The service attaches it to an existing open incident when the project, service, environment, and recent related fingerprint or anomaly type match. Otherwise, it creates a new incident with status `open`.
+
+Incident severity escalates to the highest related anomaly severity. Incidents can be resolved manually from the detail page, and stale open incidents are auto-resolved after the configured cooldown window when no related anomaly updates them.
+
+The Phase 6 UI includes `/projects/{projectId}/incidents` and `/projects/{projectId}/incidents/{incidentId}`. The detail page shows lifecycle status, timeline, related anomalies, fingerprints, event samples, and an explicit Phase 7 placeholder for Gemini summaries.
+
 ## Screenshots
 
 After later polish, capture screenshots for:
@@ -186,6 +196,7 @@ After later polish, capture screenshots for:
 - Dashboard project cards.
 - Project overview charts.
 - Anomaly table/timeline.
+- Incident list and incident detail.
 - Event explorer with selected event details.
 - Project settings with ingestion instructions.
 

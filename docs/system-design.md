@@ -12,9 +12,9 @@
 8. Discord alerts are sent for critical incidents and recoveries.
 9. The SvelteKit dashboard shows service health, events, incidents, and pipeline health.
 
-## Phase 5 Scope
+## Phase 6 Scope
 
-Phase 5 adds deterministic anomaly detection on top of service-level rollups and fingerprints:
+Phase 6 adds incident lifecycle and grouping on top of deterministic anomalies:
 
 - Monorepo structure.
 - SvelteKit login, dashboard, project list, and project API key settings screens.
@@ -36,7 +36,7 @@ Phase 5 adds deterministic anomaly detection on top of service-level rollups and
 - Fingerprint updates with local JSON fallback and PostgreSQL `event_fingerprints`.
 - Event search API and frontend event explorer.
 - Worker-updated 60-second rollup buckets.
-- Metrics API for dashboard time series, service list, error rate, p95 latency, and active incident placeholder.
+- Metrics API for dashboard time series, service list, error rate, p95 latency, and active incident count.
 - Project overview charts and service health table.
 - Dashboard project cards with recent event volume and error rate.
 - Error-rate spike detection using rolling baselines and z-scores.
@@ -44,11 +44,16 @@ Phase 5 adds deterministic anomaly detection on top of service-level rollups and
 - New repeated error detection from fingerprint counts.
 - Fatal event burst detection.
 - Anomaly API and frontend anomaly table/timeline.
-- PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, and anomalies.
+- Incident grouping from related anomalies and fingerprints.
+- Manual incident resolution.
+- Simple auto-resolution after a configurable cooldown with no related anomaly updates.
+- Incident list and incident detail APIs.
+- Frontend incident list and detail pages with timeline, related anomalies, related fingerprints, event samples, and a Phase 7 AI summary placeholder.
+- PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, and incident_events.
 - Docker Compose for local Postgres and Redis.
 - GitHub Actions skeleton.
 
-No incident grouping, AI summaries, alerts, or pipeline-health dashboard are implemented in Phase 5.
+Gemini AI summaries, Discord alerts, and pipeline-health dashboard features are not implemented in Phase 6.
 
 ## API Key Hashing and Ownership Model
 
@@ -100,4 +105,32 @@ fatal burst:
   fatal_events in current 5-minute window >= fatal_burst_threshold
 ```
 
-Open anomalies are deduplicated by project, service, environment, anomaly type, 5-minute window, and fingerprint hash. Incident grouping is intentionally left for Phase 6.
+Open anomalies are deduplicated by project, service, environment, anomaly type, 5-minute window, and fingerprint hash.
+
+## Incident Grouping and Lifecycle
+
+When the anomaly service creates one or more new anomaly records, the worker sends those records to the incident grouping service. The grouping rules are deterministic:
+
+```text
+candidate incident:
+  status == open
+  same project_id
+  same service
+  same environment
+  incident.updated_at is inside grouping window
+  same fingerprint_hash if available OR same anomaly_type
+
+if candidate exists:
+  attach anomaly through incident_events
+  update incident.updated_at
+  severity = max(existing severity, anomaly severity)
+else:
+  create incident
+  attach anomaly through incident_events
+```
+
+Incident titles are generated from anomaly type, such as `High error rate in payment-api`, `Latency spike in checkout-service`, `Repeated errors in payment-api`, or `Fatal event burst in payment-api`.
+
+Resolved incidents are not reused. A later matching anomaly creates a new incident, which preserves lifecycle history. Operators can resolve incidents manually through `POST /incidents/{incident_id}/resolve`. The worker also auto-resolves stale open incidents after `INCIDENT_AUTO_RESOLVE_COOLDOWN_MINUTES` when no related anomaly has updated them.
+
+The `incidents` table stores current lifecycle state. The `incident_events` table links incidents to anomalies and, when available, event fingerprints or event IDs. This keeps noisy anomaly records grouped into investigation units without requiring Gemini or alerting in this phase.

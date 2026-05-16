@@ -5,6 +5,7 @@ from app.services.anomaly_service import AnomalyService
 from app.services.event_normalizer import normalize_event_job
 from app.services.event_store_service import EventStoreService
 from app.services.fingerprint_store_service import FingerprintStoreService
+from app.services.incident_grouping_service import IncidentGroupingService
 from app.services.job_status_service import LocalJobStatusService
 from app.services.metric_rollup_service import MetricRollupService
 from app.services.queue_service import QueueConsumer
@@ -18,6 +19,7 @@ class EventJobProcessor:
         fingerprint_store: FingerprintStoreService | None = None,
         metric_rollups: MetricRollupService | None = None,
         anomaly_service: AnomalyService | None = None,
+        incident_grouping: IncidentGroupingService | None = None,
         job_status: LocalJobStatusService | None = None,
     ) -> None:
         self.queue = queue or QueueConsumer()
@@ -25,6 +27,7 @@ class EventJobProcessor:
         self.fingerprint_store = fingerprint_store or FingerprintStoreService()
         self.metric_rollups = metric_rollups or MetricRollupService()
         self.anomaly_service = anomaly_service or AnomalyService()
+        self.incident_grouping = incident_grouping or IncidentGroupingService()
         self.job_status = job_status or LocalJobStatusService()
 
     async def process_next(self) -> dict[str, Any]:
@@ -47,7 +50,8 @@ class EventJobProcessor:
             if inserted:
                 fingerprint = self.fingerprint_store.update(event)
                 self.metric_rollups.update_for_event(event)
-                self.anomaly_service.detect_for_event(event, fingerprint)
+                anomalies = self.anomaly_service.detect_for_event(event, fingerprint)
+                self.incident_grouping.handle_created_anomalies(anomalies)
             self.job_status.mark(job_id, "completed", attempts)
             return {
                 "processed": True,

@@ -1,6 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { createProject, getProjectMetrics, listProjects, type MetricsResponse, type Project } from '$lib/api/client';
+  import {
+    createProject,
+    getProjectMetrics,
+    listIncidents,
+    listProjects,
+    type Incident,
+    type MetricsResponse,
+    type Project
+  } from '$lib/api/client';
   import { readAccessToken } from '$lib/stores/auth';
 
   let projects = $state<Project[]>([]);
@@ -11,6 +19,7 @@
   let loading = $state(true);
   let saving = $state(false);
   let projectMetrics = $state<Record<string, MetricsResponse>>({});
+  let projectIncidents = $state<Record<string, Incident[]>>({});
 
   async function loadProjects() {
     token = readAccessToken();
@@ -31,6 +40,16 @@
         })
       );
       projectMetrics = Object.fromEntries(entries.filter((entry) => entry[1] !== null));
+      const incidentEntries = await Promise.all(
+        projects.map(async (project) => {
+          try {
+            return [project.id, (await listIncidents(token, project.id, { status: 'open' })).incidents] as const;
+          } catch {
+            return [project.id, []] as const;
+          }
+        })
+      );
+      projectIncidents = Object.fromEntries(incidentEntries);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Unable to load projects';
     } finally {
@@ -51,6 +70,7 @@
       });
       projects = [project, ...projects];
       projectMetrics = { ...projectMetrics, [project.id]: await getProjectMetrics(token, project.id) };
+      projectIncidents = { ...projectIncidents, [project.id]: [] };
       name = '';
       description = '';
     } catch (err) {
@@ -77,8 +97,10 @@
     </article>
     <article class="surface rounded-lg p-5">
       <p class="text-sm text-slate-500">Active Incidents</p>
-      <p class="mt-3 text-3xl font-semibold">0</p>
-      <p class="mt-2 text-sm text-slate-500">Planned for Phase 6</p>
+      <p class="mt-3 text-3xl font-semibold">
+        {Object.values(projectIncidents).reduce((sum, incidents) => sum + incidents.length, 0)}
+      </p>
+      <p class="mt-2 text-sm text-slate-500">Open grouped investigations</p>
     </article>
     <article class="surface rounded-lg p-5">
       <p class="text-sm text-slate-500">Events Today</p>
@@ -151,7 +173,9 @@
                     </p>
                   </div>
                 </div>
-                <p class="mt-3 text-xs text-slate-500">Incident status placeholder: none active</p>
+                <p class="mt-3 text-xs text-slate-500">
+                  {projectIncidents[project.id]?.length ?? 0} active incidents
+                </p>
               </a>
             {/each}
           </div>

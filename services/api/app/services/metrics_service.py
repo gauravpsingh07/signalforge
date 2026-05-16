@@ -7,6 +7,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.config import get_settings
+from app.services.incident_service import IncidentQueryService
 
 
 def calculate_error_rate(total_events: int, error_events: int, fatal_events: int = 0) -> float:
@@ -50,7 +51,7 @@ class MetricsService:
                     totals["errorEvents"],
                     totals["fatalEvents"],
                 ),
-                "activeIncidents": 0,
+                "activeIncidents": IncidentQueryService().count_open(project_id),
             },
             "series": series,
             "services": services,

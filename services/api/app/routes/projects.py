@@ -7,6 +7,7 @@ from app.dependencies import get_current_user, get_metadata_store
 from app.schemas.project import ProjectCreateRequest, ProjectPublic, ProjectUpdateRequest
 from app.services.anomaly_service import AnomalyQueryService
 from app.services.event_store_service import EventStoreService
+from app.services.incident_service import IncidentQueryService
 from app.services.metrics_service import MetricsService
 from app.services.metadata_store import (
     DuplicateProjectSlugError,
@@ -146,6 +147,31 @@ async def list_project_anomalies(
         limit=min(max(limit, 1), 200),
     )
     return {"anomalies": anomalies}
+
+
+@router.get("/{project_id}/incidents")
+async def list_project_incidents(
+    project_id: str,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    store: Annotated[MetadataStore, Depends(get_metadata_store)],
+    status: str | None = None,
+    severity: str | None = None,
+    service: str | None = None,
+    environment: str | None = None,
+    limit: int = 100,
+) -> dict:
+    project = await store.get_project(project_id, current_user.id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    incidents = IncidentQueryService().list_incidents(
+        project_id=project.id,
+        status=status,
+        severity=severity,
+        service=service,
+        environment=environment,
+        limit=min(max(limit, 1), 200),
+    )
+    return {"incidents": incidents}
 
 
 @router.get("/{project_id}", response_model=ProjectPublic)

@@ -24,10 +24,13 @@ class WorkerSettings(BaseSettings):
     local_fingerprints_path: str = "../../tmp/signalforge-fingerprints.json"
     local_metric_rollups_path: str = "../../tmp/signalforge-metric-rollups.json"
     local_anomalies_path: str = "../../tmp/signalforge-anomalies.json"
+    local_incidents_path: str = "../../tmp/signalforge-incidents.json"
     ingest_max_metadata_bytes: int = 8192
     anomaly_min_sample_count: int = 5
     anomaly_repeated_fingerprint_threshold: int = 5
     anomaly_fatal_burst_threshold: int = 3
+    incident_grouping_window_minutes: int = 30
+    incident_auto_resolve_cooldown_minutes: int = 30
 
     model_config = SettingsConfigDict(
         env_file=".env",

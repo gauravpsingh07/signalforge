@@ -1,6 +1,6 @@
 # API Reference
 
-Phase 5 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, and anomaly reads.
+Phase 6 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, and incident lifecycle APIs.
 
 ## Implemented
 
@@ -224,7 +224,7 @@ Response:
     "fatalEvents": 0,
     "latencyP95Ms": 900,
     "errorRate": 0.071,
-    "activeIncidents": 0
+    "activeIncidents": 1
   },
   "series": [],
   "services": ["payment-api"],
@@ -275,10 +275,95 @@ Response:
 }
 ```
 
+## Incidents
+
+### `GET /projects/{project_id}/incidents`
+
+Requires dashboard JWT auth. Returns incidents for an owned project.
+
+Supported filters:
+
+- `service`
+- `environment`
+- `severity`
+- `status`
+- `limit`
+
+Response:
+
+```json
+{
+  "incidents": [
+    {
+      "id": "incident_uuid",
+      "project_id": "project_uuid",
+      "title": "High error rate in payment-api",
+      "service": "payment-api",
+      "environment": "production",
+      "severity": "high",
+      "status": "open",
+      "ai_summary": null,
+      "likely_cause": null,
+      "recommended_actions": null,
+      "started_at": "2026-05-15T16:00:00+00:00",
+      "resolved_at": null,
+      "created_at": "2026-05-15T16:01:00+00:00",
+      "updated_at": "2026-05-15T16:03:00+00:00",
+      "related_anomaly_count": 2
+    }
+  ]
+}
+```
+
+### `GET /incidents/{incident_id}`
+
+Requires dashboard JWT auth and enforces project ownership. Returns incident detail for investigation.
+
+Response:
+
+```json
+{
+  "incident": {
+    "id": "incident_uuid",
+    "title": "High error rate in payment-api",
+    "service": "payment-api",
+    "environment": "production",
+    "severity": "high",
+    "status": "open",
+    "related_anomaly_count": 2
+  },
+  "related_anomalies": [],
+  "related_fingerprints": ["fingerprint_hash"],
+  "event_samples": [],
+  "timeline": [
+    {
+      "time": "2026-05-15T16:00:00+00:00",
+      "label": "Incident opened",
+      "description": "High error rate in payment-api"
+    }
+  ]
+}
+```
+
+### `POST /incidents/{incident_id}/resolve`
+
+Requires dashboard JWT auth and enforces project ownership. Marks the incident resolved.
+
+Response:
+
+```json
+{
+  "incident": {
+    "id": "incident_uuid",
+    "status": "resolved",
+    "resolved_at": "2026-05-15T16:30:00+00:00"
+  }
+}
+```
+
 ## Placeholders
 
 - `/v1/events/status`
 - `/metrics/status`
-- `/incidents/status`
 
-Future phases will replace remaining placeholders with incident endpoints.
+Future phases will add Gemini incident summaries, Discord alert delivery, and pipeline-health APIs.

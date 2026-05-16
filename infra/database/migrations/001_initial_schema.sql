@@ -119,6 +119,32 @@ CREATE TABLE IF NOT EXISTS anomalies (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS incidents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  service TEXT NOT NULL,
+  environment TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  ai_summary TEXT,
+  likely_cause TEXT,
+  recommended_actions JSONB,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  resolved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS incident_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  incident_id UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+  anomaly_id UUID REFERENCES anomalies(id) ON DELETE SET NULL,
+  fingerprint_id UUID REFERENCES event_fingerprints(id) ON DELETE SET NULL,
+  event_external_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_project_id ON api_keys(project_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_key_prefix ON api_keys(key_prefix);
@@ -129,9 +155,12 @@ CREATE INDEX IF NOT EXISTS idx_events_metadata_project_timestamp ON events_metad
 CREATE INDEX IF NOT EXISTS idx_events_metadata_filters ON events_metadata(project_id, service, environment, level);
 CREATE INDEX IF NOT EXISTS idx_metric_rollups_project_bucket ON metric_rollups(project_id, bucket_start DESC);
 CREATE INDEX IF NOT EXISTS idx_anomalies_project_status ON anomalies(project_id, status);
+CREATE INDEX IF NOT EXISTS idx_incidents_project_status ON incidents(project_id, status);
+CREATE INDEX IF NOT EXISTS idx_incidents_service_window ON incidents(project_id, service, environment, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_incident_events_incident_id ON incident_events(incident_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_anomalies_open_dedupe
   ON anomalies(project_id, service, environment, anomaly_type, window_start, COALESCE(fingerprint_hash, ''))
   WHERE status = 'open';
 
 -- Later phases add:
--- incidents, incident_events, and alerts.
+-- alerts.

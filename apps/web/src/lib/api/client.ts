@@ -123,6 +123,38 @@ export type Anomaly = {
   created_at: string;
 };
 
+export type Incident = {
+  id: string;
+  project_id: string;
+  title: string;
+  service: string;
+  environment: string;
+  severity: string;
+  status: string;
+  ai_summary: string | null;
+  likely_cause: string | null;
+  recommended_actions: string[] | null;
+  started_at: string;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  related_anomaly_count: number;
+};
+
+export type IncidentTimelineItem = {
+  time: string;
+  label: string;
+  description: string;
+};
+
+export type IncidentDetail = {
+  incident: Incident;
+  related_anomalies: Anomaly[];
+  related_fingerprints: string[];
+  event_samples: ProcessedEvent[];
+  timeline: IncidentTimelineItem[];
+};
+
 const API_BASE_URL = env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 async function apiRequest<T>(
@@ -278,6 +310,38 @@ export function listAnomalies(
   }
   const suffix = params.toString() ? `?${params.toString()}` : '';
   return apiRequest<{ anomalies: Anomaly[] }>(`/projects/${projectId}/anomalies${suffix}`, {}, token);
+}
+
+export function listIncidents(
+  token: string,
+  projectId: string,
+  filters: {
+    service?: string;
+    environment?: string;
+    severity?: string;
+    status?: string;
+  } = {}
+): Promise<{ incidents: Incident[] }> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest<{ incidents: Incident[] }>(`/projects/${projectId}/incidents${suffix}`, {}, token);
+}
+
+export function getIncident(token: string, incidentId: string): Promise<IncidentDetail> {
+  return apiRequest<IncidentDetail>(`/incidents/${incidentId}`, {}, token);
+}
+
+export function resolveIncident(token: string, incidentId: string): Promise<{ incident: Incident }> {
+  return apiRequest<{ incident: Incident }>(
+    `/incidents/${incidentId}/resolve`,
+    {
+      method: 'POST'
+    },
+    token
+  );
 }
 
 export { API_BASE_URL };
