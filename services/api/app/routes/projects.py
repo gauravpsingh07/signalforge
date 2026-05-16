@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import get_current_user, get_metadata_store
 from app.schemas.project import ProjectCreateRequest, ProjectPublic, ProjectUpdateRequest
+from app.services.alert_service import AlertService
 from app.services.anomaly_service import AnomalyQueryService
 from app.services.event_store_service import EventStoreService
 from app.services.incident_service import IncidentQueryService
@@ -172,6 +173,32 @@ async def list_project_incidents(
         limit=min(max(limit, 1), 200),
     )
     return {"incidents": incidents}
+
+
+@router.get("/{project_id}/alerts")
+async def list_project_alerts(
+    project_id: str,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    store: Annotated[MetadataStore, Depends(get_metadata_store)],
+    incident_id: str | None = None,
+    status: str | None = None,
+    channel: str | None = None,
+    limit: int = 100,
+) -> dict:
+    project = await store.get_project(project_id, current_user.id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    alert_service = AlertService()
+    return {
+        "alerts": alert_service.list_alerts(
+            project_id=project.id,
+            incident_id=incident_id,
+            status=status,
+            channel=channel,
+            limit=min(max(limit, 1), 200),
+        ),
+        "discordConfigured": alert_service.discord_configured(),
+    }
 
 
 @router.get("/{project_id}", response_model=ProjectPublic)

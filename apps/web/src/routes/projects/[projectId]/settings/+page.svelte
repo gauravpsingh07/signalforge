@@ -4,7 +4,9 @@
   import {
     createApiKey,
     listApiKeys,
+    listAlerts,
     revokeApiKey,
+    type AlertRecord,
     type ApiKey,
     type ApiKeyCreateResponse
   } from '$lib/api/client';
@@ -22,6 +24,8 @@
   let keyName = $state('Local demo key');
   let mode = $state<'demo' | 'live'>('demo');
   let createdKey = $state<ApiKeyCreateResponse | null>(null);
+  let alerts = $state<AlertRecord[]>([]);
+  let discordConfigured = $state(false);
   let error = $state('');
   let loading = $state(true);
   let saving = $state(false);
@@ -34,6 +38,9 @@
     }
     try {
       keys = await listApiKeys(token, projectId);
+      const alertResponse = await listAlerts(token, projectId);
+      alerts = alertResponse.alerts.slice(0, 5);
+      discordConfigured = alertResponse.discordConfigured;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Unable to load API keys';
     } finally {
@@ -133,6 +140,48 @@
         prefixes.
       </div>
     </div>
+  </div>
+
+  <div class="surface rounded-lg p-5">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold">Discord Alerts</h2>
+        <p class="mt-2 text-sm text-slate-500">
+          Discord is used for free demo alerting when high or critical incidents open, escalate, or resolve.
+        </p>
+      </div>
+      <span class="rounded px-2 py-1 text-xs font-semibold {discordConfigured ? 'bg-emerald-50 text-signal' : 'bg-slate-100 text-slate-700'}">
+        {discordConfigured ? 'Webhook configured' : 'Global webhook not configured'}
+      </span>
+    </div>
+    <p class="mt-4 text-sm text-slate-600">
+      Configure <code class="rounded bg-slate-100 px-1">DISCORD_WEBHOOK_URL</code> on the API and worker services.
+      Missing webhooks are logged as skipped alerts so the ingestion pipeline keeps running.
+    </p>
+    {#if alerts.length > 0}
+      <div class="mt-4 overflow-hidden rounded border border-slate-200">
+        <table class="w-full border-collapse text-left text-sm">
+          <thead class="bg-slate-50 text-slate-500">
+            <tr>
+              <th class="px-3 py-2 font-medium">Channel</th>
+              <th class="px-3 py-2 font-medium">Type</th>
+              <th class="px-3 py-2 font-medium">Status</th>
+              <th class="px-3 py-2 font-medium">Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each alerts as alert}
+              <tr class="border-t border-slate-100">
+                <td class="px-3 py-2">{alert.channel}</td>
+                <td class="px-3 py-2">{String(alert.payload.alert_type ?? 'update')}</td>
+                <td class="px-3 py-2">{alert.status}</td>
+                <td class="px-3 py-2 text-xs">{alert.created_at}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
   </div>
 
   {#if createdKey}

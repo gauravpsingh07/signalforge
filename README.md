@@ -2,13 +2,13 @@
 
 SignalForge is a portfolio-scale observability platform for application events. The full system is designed to ingest logs and events, process them asynchronously, detect anomalies, group incidents, generate AI incident summaries, send alerts, and expose pipeline health.
 
-Phase 7 implements Gemini AI incident summaries after deterministic anomaly detection and incident grouping. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, incident grouping, structured incident summaries, incident list/detail pages, manual resolution, and an event explorer.
+Phase 8 implements Discord incident alerts and alert deduplication. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, incident grouping, structured incident summaries, Discord alert logging, incident list/detail pages, manual resolution, and an event explorer.
 
 ## Why This Is Not a Simple Log Viewer
 
 The project is planned around a distributed event pipeline rather than a raw log table. The intended architecture separates request-time ingestion from background processing, analytics storage, incident grouping, AI summary generation, alert delivery, and internal pipeline observability.
 
-Phase 7 detects anomalies from rollups and fingerprints using Python logic, groups related anomalies into incidents, then summarizes high and critical incidents with Gemini when configured. Gemini is never used to decide whether an anomaly exists. Discord alerts and pipeline observability are not implemented yet.
+Phase 8 detects anomalies from rollups and fingerprints using Python logic, groups related anomalies into incidents, summarizes high and critical incidents with Gemini when configured, and sends or logs deduplicated Discord alerts for incident open, escalation, and recovery states. Pipeline observability is not implemented yet.
 
 ## Architecture Placeholder
 
@@ -27,14 +27,14 @@ Client app
 
 | Layer | Technology | Current Status |
 | --- | --- | --- |
-| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, anomaly table, incident pages with AI summaries, event explorer |
-| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, event search, metrics, anomalies, incidents |
-| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups, anomaly detection, incident grouping, AI summary generation |
-| Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, incident_events |
+| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, anomaly table, incident pages with AI summaries and alert history, event explorer |
+| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, event search, metrics, anomalies, incidents, alerts |
+| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups, anomaly detection, incident grouping, AI summary generation, Discord alerts |
+| Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, incident_events, alerts |
 | Queue | Redis/QStash-compatible | Queue abstraction with local JSONL fallback |
 | Event Store | ClickHouse/Tinybird-compatible | Schema placeholder |
 | AI | Gemini API with fallback | Post-detection incident summaries only |
-| Alerts | Discord Webhooks | Planned integration |
+| Alerts | Discord Webhooks | High/critical incident and recovery notifications with dedupe |
 | CI | GitHub Actions | Frontend, API, worker jobs |
 
 ## Local Setup
@@ -109,7 +109,7 @@ Do not commit real secrets or local `.env` files.
 6. Phase 5: Deterministic anomaly detection. Implemented.
 7. Phase 6: Incident grouping and lifecycle. Implemented.
 8. Phase 7: Gemini incident summaries. Implemented.
-9. Phase 8: Discord alerts.
+9. Phase 8: Discord alerts. Implemented.
 10. Phase 9: Pipeline observability.
 11. Phase 10: Demo scripts, tests, and hardening.
 12. Phase 11: Free-tier deployment docs.
@@ -126,6 +126,7 @@ SignalForge is designed for local and portfolio-scale demos. External providers 
 - Project and API key routes enforce user ownership.
 - Later phases must keep AI calls and analytics work out of the request path.
 - AI summary prompts are built from sanitized incident context and redact API keys, tokens, secrets, cookies, and authorization strings before any Gemini call.
+- Discord webhooks are configured through environment variables. Webhook URLs are not exposed in the frontend, and missing webhooks are logged as skipped alerts instead of failing processing.
 - CORS origins are environment-driven in the API service.
 
 ## Testing
@@ -151,6 +152,8 @@ Phase 5 tests cover z-score calculation, error-rate spikes, latency spikes, repe
 Phase 6 tests cover incident grouping, service separation, severity escalation, auto-resolution, resolved incident dedupe behavior, incident endpoint ownership, detail payloads, and manual resolution.
 
 Phase 7 tests cover AI input sanitization, missing-key fallback summaries, valid Gemini JSON parsing and storage, invalid Gemini output fallback, summary regeneration suppression, and incident detail summary payloads.
+
+Phase 8 tests cover missing webhook skip logging, sent alert recording, open alert deduplication, severity escalation alerts, recovery alerts, failed webhook recording, alert history APIs, and manual-resolution recovery alert logging.
 
 ## Demo Ingestion
 
@@ -212,6 +215,18 @@ The summary contract is structured JSON:
 
 If `GEMINI_API_KEY` is missing or Gemini returns invalid JSON, the worker stores a deterministic local fallback summary so the demo remains usable without external AI access. Summary results are cached on the incident record in `ai_summary`, `likely_cause`, and `recommended_actions`.
 
+## Discord Alerts
+
+SignalForge uses a global `DISCORD_WEBHOOK_URL` for free demo alerting. The worker records a Discord alert when a high or critical incident opens, when an incident escalates from high to critical, and when an incident resolves.
+
+Alerts are deduplicated by incident, channel, and alert type:
+
+- one `opened` alert per high/critical incident;
+- one `escalated` alert when severity increases to critical;
+- one `resolved` alert when the incident recovers or is manually resolved.
+
+If `DISCORD_WEBHOOK_URL` is missing, the alert is recorded with status `skipped`. If Discord returns an error, the alert is recorded with status `failed`. Both paths keep the worker and API pipeline running. Alert history is visible on the incident detail page and project settings page.
+
 ## Screenshots
 
 After later polish, capture screenshots for:
@@ -220,6 +235,7 @@ After later polish, capture screenshots for:
 - Project overview charts.
 - Anomaly table/timeline.
 - Incident list and incident detail.
+- Discord alert history.
 - Event explorer with selected event details.
 - Project settings with ingestion instructions.
 

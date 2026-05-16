@@ -145,6 +145,18 @@ CREATE TABLE IF NOT EXISTS incident_events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  incident_id UUID REFERENCES incidents(id) ON DELETE CASCADE,
+  channel TEXT NOT NULL,
+  status TEXT NOT NULL,
+  payload JSONB,
+  sent_at TIMESTAMPTZ,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_project_id ON api_keys(project_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_key_prefix ON api_keys(key_prefix);
@@ -158,9 +170,11 @@ CREATE INDEX IF NOT EXISTS idx_anomalies_project_status ON anomalies(project_id,
 CREATE INDEX IF NOT EXISTS idx_incidents_project_status ON incidents(project_id, status);
 CREATE INDEX IF NOT EXISTS idx_incidents_service_window ON incidents(project_id, service, environment, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_incident_events_incident_id ON incident_events(incident_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_project_created ON alerts(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_incident_channel ON alerts(incident_id, channel);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_anomalies_open_dedupe
   ON anomalies(project_id, service, environment, anomaly_type, window_start, COALESCE(fingerprint_hash, ''))
   WHERE status = 'open';
 
 -- Later phases add:
--- alerts.
+-- pipeline health views.

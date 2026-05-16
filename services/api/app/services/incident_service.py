@@ -7,6 +7,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.config import get_settings
+from app.services.alert_service import AlertService
 from app.services.event_store_service import EventStoreService
 
 
@@ -85,6 +86,11 @@ class IncidentQueryService:
             "related_anomalies": sorted(anomalies, key=lambda item: item.get("created_at", "")),
             "related_fingerprints": fingerprints,
             "event_samples": event_samples,
+            "alert_history": AlertService().list_alerts(
+                project_id=incident["project_id"],
+                incident_id=incident_id,
+                limit=50,
+            ),
             "timeline": self._timeline(incident, anomalies),
         }
 
@@ -101,7 +107,9 @@ class IncidentQueryService:
         incident["resolved_at"] = incident.get("resolved_at") or now
         incident["updated_at"] = now
         self._write_incidents(data)
-        return self._with_counts(incident, data["incident_events"])
+        public_incident = self._with_counts(incident, data["incident_events"])
+        AlertService().handle_incident_resolved(public_incident)
+        return public_incident
 
     def count_open(self, project_id: str) -> int:
         return len(self.list_incidents(project_id=project_id, status="open", limit=200))
@@ -247,6 +255,11 @@ class IncidentQueryService:
             "related_anomalies": anomalies,
             "related_fingerprints": sorted({item["fingerprint_hash"] for item in anomalies if item["fingerprint_hash"]}),
             "event_samples": event_samples,
+            "alert_history": AlertService().list_alerts(
+                project_id=incident_dict["project_id"],
+                incident_id=incident_id,
+                limit=50,
+            ),
             "timeline": self._timeline(incident_dict, anomalies),
         }
 
@@ -275,7 +288,9 @@ class IncidentQueryService:
                 incident = dict(row)
                 cur.execute("SELECT COUNT(*) FROM incident_events WHERE incident_id = %s", (incident_id,))
                 incident["related_anomaly_count"] = cur.fetchone()["count"]
-                return normalize_incident(incident)
+                public_incident = normalize_incident(incident)
+        AlertService().handle_incident_resolved(public_incident)
+        return public_incident
 
 
 def normalize_incident(incident: dict[str, Any]) -> dict[str, Any]:

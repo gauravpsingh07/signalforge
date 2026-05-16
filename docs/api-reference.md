@@ -1,6 +1,6 @@
 # API Reference
 
-Phase 7 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, incident lifecycle APIs, and cached AI incident summaries.
+Phase 8 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, incident lifecycle APIs, cached AI incident summaries, and Discord alert history.
 
 ## Implemented
 
@@ -355,6 +355,17 @@ Response:
   "related_anomalies": [],
   "related_fingerprints": ["fingerprint_hash"],
   "event_samples": [],
+  "alert_history": [
+    {
+      "id": "alert_uuid",
+      "channel": "discord",
+      "status": "skipped",
+      "payload": {"alert_type": "opened"},
+      "sent_at": null,
+      "error_message": "DISCORD_WEBHOOK_URL is not configured",
+      "created_at": "2026-05-15T16:02:00+00:00"
+    }
+  ],
   "timeline": [
     {
       "time": "2026-05-15T16:00:00+00:00",
@@ -364,6 +375,51 @@ Response:
   ]
 }
 ```
+
+## Alerts
+
+### `GET /projects/{project_id}/alerts`
+
+Requires dashboard JWT auth. Returns alert history for an owned project and whether a global Discord webhook is configured.
+
+Supported filters:
+
+- `incident_id`
+- `status`
+- `channel`
+- `limit`
+
+Response:
+
+```json
+{
+  "discordConfigured": false,
+  "alerts": [
+    {
+      "id": "alert_uuid",
+      "project_id": "project_uuid",
+      "incident_id": "incident_uuid",
+      "channel": "discord",
+      "status": "skipped",
+      "payload": {
+        "alert_type": "opened",
+        "content": "Incident opened: High error rate in payment-api"
+      },
+      "sent_at": null,
+      "error_message": "DISCORD_WEBHOOK_URL is not configured",
+      "created_at": "2026-05-15T16:02:00+00:00"
+    }
+  ]
+}
+```
+
+Alert statuses:
+
+- `sent`: webhook request succeeded.
+- `skipped`: `DISCORD_WEBHOOK_URL` is not configured.
+- `failed`: webhook request failed but did not crash the pipeline.
+
+## Incident Actions
 
 ### `POST /incidents/{incident_id}/resolve`
 
@@ -386,4 +442,4 @@ Response:
 - `/v1/events/status`
 - `/metrics/status`
 
-Future phases will add Discord alert delivery and pipeline-health APIs.
+Future phases will add pipeline-health APIs.

@@ -10,6 +10,7 @@ from psycopg.types.json import Jsonb
 
 from app.config import get_settings
 from app.services.ai_summary_service import AiSummaryService
+from app.services.discord_service import DiscordAlertService
 
 
 SEVERITY_RANK = {"low": 0, "medium": 1, "high": 2, "critical": 3}
@@ -21,10 +22,12 @@ class IncidentGroupingService:
         path: str | None = None,
         anomalies_path: str | None = None,
         ai_summary_service: AiSummaryService | None = None,
+        discord_service: DiscordAlertService | None = None,
     ) -> None:
         self.path = Path(path or get_settings().local_incidents_path)
         self.anomalies_path = Path(anomalies_path or get_settings().local_anomalies_path)
         self.ai_summary_service = ai_summary_service or AiSummaryService()
+        self.discord_service = discord_service or DiscordAlertService()
 
     def handle_created_anomalies(self, anomalies: list[dict[str, Any]]) -> list[dict[str, Any]]:
         incidents = []
@@ -46,6 +49,7 @@ class IncidentGroupingService:
             previous_severity = None
             incident = self._create_local(data, anomaly, now)
         self._maybe_summarize_local(data, incident, previous_severity)
+        self.discord_service.handle_incident_update(incident, previous_severity)
         self._write(data)
         return incident
 
@@ -64,6 +68,7 @@ class IncidentGroupingService:
                 incident["status"] = "resolved"
                 incident["resolved_at"] = now.isoformat()
                 incident["updated_at"] = now.isoformat()
+                self.discord_service.handle_incident_resolved(incident)
                 resolved.append(incident)
         if resolved:
             self._write(data)
@@ -222,6 +227,7 @@ class IncidentGroupingService:
                     incident = dict(cur.fetchone())
                 self._attach_postgres(cur, incident_id, anomaly)
                 self._maybe_summarize_postgres(cur, incident, previous_severity)
+                self.discord_service.handle_incident_update(incident, previous_severity)
                 return incident
 
     def _find_related_postgres(self, cur, anomaly: dict[str, Any]) -> dict[str, Any] | None:
@@ -357,7 +363,10 @@ class IncidentGroupingService:
                     """,
                     (now.isoformat(), now.isoformat(), cutoff.isoformat()),
                 )
-                return [dict(row) for row in cur.fetchall()]
+                resolved = [dict(row) for row in cur.fetchall()]
+        for incident in resolved:
+            self.discord_service.handle_incident_resolved(incident)
+        return resolved
 
     def _read(self) -> dict[str, list[dict[str, Any]]]:
         if not self.path.exists():

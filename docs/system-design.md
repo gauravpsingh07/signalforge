@@ -12,9 +12,9 @@
 8. Discord alerts are sent for critical incidents and recoveries.
 9. The SvelteKit dashboard shows service health, events, incidents, and pipeline health.
 
-## Phase 7 Scope
+## Phase 8 Scope
 
-Phase 7 adds Gemini AI incident summaries after deterministic anomalies have been grouped into incidents:
+Phase 8 adds Discord alert delivery and alert deduplication after deterministic anomalies have been grouped into incidents:
 
 - Monorepo structure.
 - SvelteKit login, dashboard, project list, and project API key settings screens.
@@ -52,11 +52,15 @@ Phase 7 adds Gemini AI incident summaries after deterministic anomalies have bee
 - Gemini incident summary service with deterministic local fallback when `GEMINI_API_KEY` is not configured.
 - AI input sanitization that redacts API keys, bearer tokens, JWTs, passwords, cookies, secrets, and authorization strings.
 - Summary caching in incident records so incidents are not regenerated for every event.
-- PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, and incident_events.
+- Discord alert delivery for high/critical incident open, high-to-critical escalation, and resolved recovery states.
+- Alert deduplication by incident, channel, and alert type.
+- Alert logging with `sent`, `skipped`, and `failed` statuses.
+- Alert history in incident detail and project settings.
+- PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, incident_events, and alerts.
 - Docker Compose for local Postgres and Redis.
 - GitHub Actions skeleton.
 
-Discord alerts and pipeline-health dashboard features are not implemented in Phase 7.
+Pipeline-health dashboard features are not implemented in Phase 8.
 
 ## API Key Hashing and Ownership Model
 
@@ -186,3 +190,38 @@ Gemini is asked for strict JSON with this contract:
 ```
 
 If `GEMINI_API_KEY` is not configured, or Gemini returns invalid JSON, SignalForge stores a deterministic fallback summary. The API parses the cached summary and exposes it as `ai_summary_payload` for the incident detail UI.
+
+## Discord Alerting and Deduplication
+
+Discord alerting happens after incident grouping and, when available, after the AI summary is cached:
+
+```text
+deterministic anomaly -> incident grouping -> AI summary/fallback -> Discord alert
+```
+
+The alert service sends only incident lifecycle notifications:
+
+```text
+opened:
+  incident severity is high or critical
+  no previous opened alert exists for incident/channel
+
+escalated:
+  previous severity was high
+  new severity is critical
+  no previous escalated alert exists for incident/channel
+
+resolved:
+  incident status changes to resolved
+  no previous resolved alert exists for incident/channel
+```
+
+The MVP uses a global `DISCORD_WEBHOOK_URL`. Per-project webhook storage is intentionally deferred to avoid introducing secret storage and masking flows in this phase. `DASHBOARD_BASE_URL` can be configured to include a dashboard link in the Discord embed.
+
+Every attempted alert is recorded in the `alerts` table or local fallback file:
+
+- `sent` when Discord accepts the webhook request;
+- `skipped` when `DISCORD_WEBHOOK_URL` is missing;
+- `failed` when the webhook call raises or returns an error.
+
+Skipped and failed alerts do not crash event processing, incident grouping, manual resolution, or auto-resolution. This keeps alerting as a side effect of the incident lifecycle, not a dependency of ingestion or detection.

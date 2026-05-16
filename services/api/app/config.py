@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-1.5-flash"
     discord_webhook_url: str = ""
+    dashboard_base_url: str = ""
     ingest_rate_limit_per_minute: int = 60
     ingest_rate_limit_per_ip_minute: int = 120
     ingest_max_batch_size: int = 25
@@ -30,6 +31,7 @@ class Settings(BaseSettings):
     local_metric_rollups_path: str = "../../tmp/signalforge-metric-rollups.json"
     local_anomalies_path: str = "../../tmp/signalforge-anomalies.json"
     local_incidents_path: str = "../../tmp/signalforge-incidents.json"
+    local_alerts_path: str = "../../tmp/signalforge-alerts.json"
     anomaly_min_sample_count: int = 5
     anomaly_repeated_fingerprint_threshold: int = 5
     anomaly_fatal_burst_threshold: int = 3

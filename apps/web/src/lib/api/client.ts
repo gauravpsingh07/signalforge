@@ -154,6 +154,18 @@ export type IncidentSummary = {
   error?: string;
 };
 
+export type AlertRecord = {
+  id: string;
+  project_id: string;
+  incident_id: string | null;
+  channel: string;
+  status: string;
+  payload: Record<string, unknown>;
+  sent_at: string | null;
+  error_message: string | null;
+  created_at: string;
+};
+
 export type IncidentTimelineItem = {
   time: string;
   label: string;
@@ -165,6 +177,7 @@ export type IncidentDetail = {
   related_anomalies: Anomaly[];
   related_fingerprints: string[];
   event_samples: ProcessedEvent[];
+  alert_history: AlertRecord[];
   timeline: IncidentTimelineItem[];
 };
 
@@ -355,6 +368,23 @@ export function resolveIncident(token: string, incidentId: string): Promise<{ in
     },
     token
   );
+}
+
+export function listAlerts(
+  token: string,
+  projectId: string,
+  filters: {
+    incident_id?: string;
+    status?: string;
+    channel?: string;
+  } = {}
+): Promise<{ alerts: AlertRecord[]; discordConfigured: boolean }> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest<{ alerts: AlertRecord[]; discordConfigured: boolean }>(`/projects/${projectId}/alerts${suffix}`, {}, token);
 }
 
 export { API_BASE_URL };

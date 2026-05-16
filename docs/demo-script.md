@@ -1,6 +1,6 @@
 # Demo Script
 
-Phase 7 demo:
+Phase 8 demo:
 
 1. Start the FastAPI service.
 2. Run `GET /health` or open the generated OpenAPI docs at `/docs`.
@@ -22,6 +22,8 @@ Phase 7 demo:
 17. Open `/projects/{projectId}/anomalies` and verify deterministic anomalies appear.
 18. Open `/projects/{projectId}/incidents` and verify related anomalies are grouped into an open incident.
 19. Open the incident detail page and verify the timeline, related anomalies, fingerprints, and AI summary card appear. If `GEMINI_API_KEY` is not configured, verify the deterministic fallback summary is shown.
-20. Click Resolve and verify the incident status changes to resolved.
+20. Verify the incident detail page shows alert history. If `DISCORD_WEBHOOK_URL` is not configured, verify a skipped Discord alert is logged.
+21. Open project settings and verify the Discord alerts card shows whether the global webhook is configured.
+22. Click Resolve and verify the incident status changes to resolved and a resolved alert is logged.
 
-Future demo phases will add Discord alerts and pipeline observability.
+Future demo phases will add pipeline observability.

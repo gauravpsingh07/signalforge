@@ -19,6 +19,7 @@ class WorkerSettings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-1.5-flash"
     discord_webhook_url: str = ""
+    dashboard_base_url: str = ""
     local_queue_path: str = "../../tmp/signalforge-events.jsonl"
     local_event_store_path: str = "../../tmp/signalforge-processed-events.jsonl"
     local_worker_jobs_path: str = "../../tmp/signalforge-worker-jobs.json"
@@ -26,6 +27,7 @@ class WorkerSettings(BaseSettings):
     local_metric_rollups_path: str = "../../tmp/signalforge-metric-rollups.json"
     local_anomalies_path: str = "../../tmp/signalforge-anomalies.json"
     local_incidents_path: str = "../../tmp/signalforge-incidents.json"
+    local_alerts_path: str = "../../tmp/signalforge-alerts.json"
     ingest_max_metadata_bytes: int = 8192
     anomaly_min_sample_count: int = 5
     anomaly_repeated_fingerprint_threshold: int = 5

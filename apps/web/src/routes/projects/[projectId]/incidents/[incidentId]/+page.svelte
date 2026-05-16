@@ -200,6 +200,40 @@
             </div>
           {/if}
         </section>
+
+        <section class="surface overflow-hidden rounded-lg">
+          <div class="border-b border-slate-100 px-5 py-4">
+            <h2 class="text-lg font-semibold">Alert History</h2>
+          </div>
+          <table class="w-full border-collapse text-left text-sm">
+            <thead class="bg-slate-50 text-slate-500">
+              <tr>
+                <th class="px-4 py-3 font-medium">Channel</th>
+                <th class="px-4 py-3 font-medium">Type</th>
+                <th class="px-4 py-3 font-medium">Status</th>
+                <th class="px-4 py-3 font-medium">Time</th>
+                <th class="px-4 py-3 font-medium">Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each detail.alert_history as alert}
+                <tr class="border-t border-slate-100">
+                  <td class="px-4 py-3">{alert.channel}</td>
+                  <td class="px-4 py-3">{String(alert.payload.alert_type ?? 'update')}</td>
+                  <td class="px-4 py-3">
+                    <span class="rounded px-2 py-1 text-xs font-semibold {alert.status === 'sent' ? 'bg-emerald-50 text-signal' : alert.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}">
+                      {alert.status}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-xs">{alert.sent_at ?? alert.created_at}</td>
+                  <td class="px-4 py-3 text-xs text-slate-500">{alert.error_message ?? '-'}</td>
+                </tr>
+              {:else}
+                <tr><td class="px-4 py-8 text-center text-slate-500" colspan="5">No alerts have been recorded for this incident.</td></tr>
+              {/each}
+            </tbody>
+          </table>
+        </section>
       </div>
     </div>
   {/if}
