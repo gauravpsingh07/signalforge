@@ -1,6 +1,6 @@
 # API Reference
 
-Phase 6 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, and incident lifecycle APIs.
+Phase 7 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, incident lifecycle APIs, and cached AI incident summaries.
 
 ## Implemented
 
@@ -302,9 +302,19 @@ Response:
       "environment": "production",
       "severity": "high",
       "status": "open",
-      "ai_summary": null,
-      "likely_cause": null,
-      "recommended_actions": null,
+      "ai_summary": "{\"summary\":\"Checkout errors are elevated.\"}",
+      "ai_summary_payload": {
+        "summary": "Checkout errors are elevated.",
+        "affectedService": "payment-api",
+        "impact": "Some checkout requests fail.",
+        "likelyCause": "Payment provider timeouts.",
+        "timeline": [{"time": "16:00", "event": "Error rate exceeded baseline"}],
+        "recommendedActions": ["Check payment provider status"],
+        "confidence": "medium",
+        "source": "fallback"
+      },
+      "likely_cause": "Payment provider timeouts.",
+      "recommended_actions": ["Check payment provider status"],
       "started_at": "2026-05-15T16:00:00+00:00",
       "resolved_at": null,
       "created_at": "2026-05-15T16:01:00+00:00",
@@ -330,6 +340,16 @@ Response:
     "environment": "production",
     "severity": "high",
     "status": "open",
+    "ai_summary_payload": {
+      "summary": "Checkout errors are elevated.",
+      "affectedService": "payment-api",
+      "impact": "Some checkout requests fail.",
+      "likelyCause": "Payment provider timeouts.",
+      "timeline": [{"time": "16:00", "event": "Error rate exceeded baseline"}],
+      "recommendedActions": ["Check payment provider status"],
+      "confidence": "medium",
+      "source": "fallback"
+    },
     "related_anomaly_count": 2
   },
   "related_anomalies": [],
@@ -366,4 +386,4 @@ Response:
 - `/v1/events/status`
 - `/metrics/status`
 
-Future phases will add Gemini incident summaries, Discord alert delivery, and pipeline-health APIs.
+Future phases will add Discord alert delivery and pipeline-health APIs.

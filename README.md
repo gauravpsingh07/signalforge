@@ -2,13 +2,13 @@
 
 SignalForge is a portfolio-scale observability platform for application events. The full system is designed to ingest logs and events, process them asynchronously, detect anomalies, group incidents, generate AI incident summaries, send alerts, and expose pipeline health.
 
-Phase 6 implements incident lifecycle and grouping. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, anomaly views, incident grouping, incident list/detail pages, manual resolution, and an event explorer.
+Phase 7 implements Gemini AI incident summaries after deterministic anomaly detection and incident grouping. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, incident grouping, structured incident summaries, incident list/detail pages, manual resolution, and an event explorer.
 
 ## Why This Is Not a Simple Log Viewer
 
 The project is planned around a distributed event pipeline rather than a raw log table. The intended architecture separates request-time ingestion from background processing, analytics storage, incident grouping, AI summary generation, alert delivery, and internal pipeline observability.
 
-Phase 6 detects anomalies from rollups and fingerprints using Python logic, then groups related anomalies into incidents. It does not build Gemini AI summaries, Discord alerts, or pipeline observability yet.
+Phase 7 detects anomalies from rollups and fingerprints using Python logic, groups related anomalies into incidents, then summarizes high and critical incidents with Gemini when configured. Gemini is never used to decide whether an anomaly exists. Discord alerts and pipeline observability are not implemented yet.
 
 ## Architecture Placeholder
 
@@ -27,13 +27,13 @@ Client app
 
 | Layer | Technology | Current Status |
 | --- | --- | --- |
-| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, anomaly table, incident pages, event explorer |
+| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, anomaly table, incident pages with AI summaries, event explorer |
 | Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, event search, metrics, anomalies, incidents |
-| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups, anomaly detection, incident grouping |
+| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups, anomaly detection, incident grouping, AI summary generation |
 | Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, incident_events |
 | Queue | Redis/QStash-compatible | Queue abstraction with local JSONL fallback |
 | Event Store | ClickHouse/Tinybird-compatible | Schema placeholder |
-| AI | Gemini API | Planned integration |
+| AI | Gemini API with fallback | Post-detection incident summaries only |
 | Alerts | Discord Webhooks | Planned integration |
 | CI | GitHub Actions | Frontend, API, worker jobs |
 
@@ -108,7 +108,7 @@ Do not commit real secrets or local `.env` files.
 5. Phase 4: Metrics dashboard and event explorer. Implemented.
 6. Phase 5: Deterministic anomaly detection. Implemented.
 7. Phase 6: Incident grouping and lifecycle. Implemented.
-8. Phase 7: Gemini incident summaries.
+8. Phase 7: Gemini incident summaries. Implemented.
 9. Phase 8: Discord alerts.
 10. Phase 9: Pipeline observability.
 11. Phase 10: Demo scripts, tests, and hardening.
@@ -125,6 +125,7 @@ SignalForge is designed for local and portfolio-scale demos. External providers 
 - Ingestion API keys are hashed before storage and raw keys are shown only once at creation.
 - Project and API key routes enforce user ownership.
 - Later phases must keep AI calls and analytics work out of the request path.
+- AI summary prompts are built from sanitized incident context and redact API keys, tokens, secrets, cookies, and authorization strings before any Gemini call.
 - CORS origins are environment-driven in the API service.
 
 ## Testing
@@ -149,6 +150,8 @@ Phase 5 tests cover z-score calculation, error-rate spikes, latency spikes, repe
 
 Phase 6 tests cover incident grouping, service separation, severity escalation, auto-resolution, resolved incident dedupe behavior, incident endpoint ownership, detail payloads, and manual resolution.
 
+Phase 7 tests cover AI input sanitization, missing-key fallback summaries, valid Gemini JSON parsing and storage, invalid Gemini output fallback, summary regeneration suppression, and incident detail summary payloads.
+
 ## Demo Ingestion
 
 After starting the API and creating a project API key, send demo events:
@@ -157,7 +160,7 @@ After starting the API and creating a project API key, send demo events:
 python scripts/send_demo_events.py --api-url http://localhost:8000 --project-key sf_demo_your_key --count 40
 ```
 
-The API validates the request, applies rate limits, records a queued `worker_jobs` row, writes the job to the configured queue fallback, and returns `202 Accepted` with a job ID. Analytics, AI, and alerting are intentionally outside this request path.
+The API validates the request, applies rate limits, records a queued `worker_jobs` row, writes the job to the configured queue fallback, and returns `202 Accepted` with a job ID. Analytics, AI summaries, and alerting are intentionally outside this request path.
 
 Process queued local events:
 
@@ -187,7 +190,27 @@ When the worker creates an anomaly, it passes the anomaly to the incident groupi
 
 Incident severity escalates to the highest related anomaly severity. Incidents can be resolved manually from the detail page, and stale open incidents are auto-resolved after the configured cooldown window when no related anomaly updates them.
 
-The Phase 6 UI includes `/projects/{projectId}/incidents` and `/projects/{projectId}/incidents/{incidentId}`. The detail page shows lifecycle status, timeline, related anomalies, fingerprints, event samples, and an explicit Phase 7 placeholder for Gemini summaries.
+The UI includes `/projects/{projectId}/incidents` and `/projects/{projectId}/incidents/{incidentId}`. The detail page shows lifecycle status, timeline, related anomalies, fingerprints, event samples, and structured AI summary fields when available.
+
+## AI Incident Summaries
+
+Gemini is used after deterministic anomaly detection and incident grouping. The worker summarizes a high or critical incident when it is created or when its severity escalates. It does not regenerate for every event.
+
+The summary contract is structured JSON:
+
+```json
+{
+  "summary": "Short incident summary.",
+  "affectedService": "payment-api",
+  "impact": "Checkout requests are failing for some users.",
+  "likelyCause": "Payment provider timeout or service regression.",
+  "timeline": [{"time": "16:00", "event": "Error rate exceeded baseline"}],
+  "recommendedActions": ["Check payment provider status"],
+  "confidence": "medium"
+}
+```
+
+If `GEMINI_API_KEY` is missing or Gemini returns invalid JSON, the worker stores a deterministic local fallback summary so the demo remains usable without external AI access. Summary results are cached on the incident record in `ai_summary`, `likely_cause`, and `recommended_actions`.
 
 ## Screenshots
 

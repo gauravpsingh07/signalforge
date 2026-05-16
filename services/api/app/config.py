@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     clickhouse_password: str = ""
     clickhouse_database: str = ""
     gemini_api_key: str = ""
+    gemini_model: str = "gemini-1.5-flash"
     discord_webhook_url: str = ""
     ingest_rate_limit_per_minute: int = 60
     ingest_rate_limit_per_ip_minute: int = 120

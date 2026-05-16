@@ -107,10 +107,10 @@ class IncidentQueryService:
         return len(self.list_incidents(project_id=project_id, status="open", limit=200))
 
     def _with_counts(self, incident: dict[str, Any], events: list[dict[str, Any]]) -> dict[str, Any]:
-        return {
+        return normalize_incident({
             **incident,
             "related_anomaly_count": sum(1 for event in events if event.get("incident_id") == incident.get("id")),
-        }
+        })
 
     def _timeline(self, incident: dict[str, Any], anomalies: list[dict[str, Any]]) -> list[dict[str, str]]:
         rows = [
@@ -197,7 +197,7 @@ class IncidentQueryService:
                     """,
                     params,
                 )
-                return [dict(row) for row in cur.fetchall()]
+                return [normalize_incident(dict(row)) for row in cur.fetchall()]
 
     def _detail_postgres(self, incident_id: str) -> dict[str, Any] | None:
         with psycopg.connect(get_settings().database_url) as conn:
@@ -235,7 +235,7 @@ class IncidentQueryService:
                     (incident_id,),
                 )
                 anomalies = [dict(row) for row in cur.fetchall()]
-        incident_dict = dict(incident)
+        incident_dict = normalize_incident(dict(incident))
         event_samples = EventStoreService().list_events(
             project_id=incident_dict["project_id"],
             service=incident_dict["service"],
@@ -275,4 +275,34 @@ class IncidentQueryService:
                 incident = dict(row)
                 cur.execute("SELECT COUNT(*) FROM incident_events WHERE incident_id = %s", (incident_id,))
                 incident["related_anomaly_count"] = cur.fetchone()["count"]
-                return incident
+                return normalize_incident(incident)
+
+
+def normalize_incident(incident: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **incident,
+        "ai_summary_payload": parse_summary_payload(incident.get("ai_summary")),
+    }
+
+
+def parse_summary_payload(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError:
+        return {
+            "summary": value,
+            "affectedService": "",
+            "impact": "",
+            "likelyCause": "",
+            "timeline": [],
+            "recommendedActions": [],
+            "confidence": "unknown",
+            "source": "legacy",
+        }
+    return payload if isinstance(payload, dict) else None

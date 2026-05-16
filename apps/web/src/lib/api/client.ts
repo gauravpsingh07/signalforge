@@ -132,6 +132,7 @@ export type Incident = {
   severity: string;
   status: string;
   ai_summary: string | null;
+  ai_summary_payload: IncidentSummary | null;
   likely_cause: string | null;
   recommended_actions: string[] | null;
   started_at: string;
@@ -139,6 +140,18 @@ export type Incident = {
   created_at: string;
   updated_at: string;
   related_anomaly_count: number;
+};
+
+export type IncidentSummary = {
+  summary: string;
+  affectedService: string;
+  impact: string;
+  likelyCause: string;
+  timeline: Array<{ time: string; event: string }>;
+  recommendedActions: string[];
+  confidence: string;
+  source?: string;
+  error?: string;
 };
 
 export type IncidentTimelineItem = {

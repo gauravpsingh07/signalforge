@@ -6,16 +6,25 @@ from uuid import uuid4
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 from app.config import get_settings
+from app.services.ai_summary_service import AiSummaryService
 
 
 SEVERITY_RANK = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 
 
 class IncidentGroupingService:
-    def __init__(self, path: str | None = None) -> None:
+    def __init__(
+        self,
+        path: str | None = None,
+        anomalies_path: str | None = None,
+        ai_summary_service: AiSummaryService | None = None,
+    ) -> None:
         self.path = Path(path or get_settings().local_incidents_path)
+        self.anomalies_path = Path(anomalies_path or get_settings().local_anomalies_path)
+        self.ai_summary_service = ai_summary_service or AiSummaryService()
 
     def handle_created_anomalies(self, anomalies: list[dict[str, Any]]) -> list[dict[str, Any]]:
         incidents = []
@@ -31,9 +40,12 @@ class IncidentGroupingService:
         now = _incident_time(anomaly)
         existing = self._find_related_local(data, anomaly)
         if existing:
+            previous_severity = existing["severity"]
             incident = self._attach_local(data, existing, anomaly, now)
         else:
+            previous_severity = None
             incident = self._create_local(data, anomaly, now)
+        self._maybe_summarize_local(data, incident, previous_severity)
         self._write(data)
         return incident
 
@@ -132,12 +144,45 @@ class IncidentGroupingService:
         data["incident_events"].append(_incident_event(incident["id"], anomaly, now))
         return incident
 
+    def _maybe_summarize_local(
+        self,
+        data: dict[str, list[dict[str, Any]]],
+        incident: dict[str, Any],
+        previous_severity: str | None,
+    ) -> None:
+        if not should_summarize(incident, previous_severity):
+            return
+        anomalies = self._incident_anomalies_local(data, incident["id"])
+        result = self.ai_summary_service.summarize_incident(incident, anomalies)
+        payload = {**result.payload, "source": result.source}
+        if result.error:
+            payload["error"] = result.error
+        incident["ai_summary"] = json.dumps(payload, sort_keys=True)
+        incident["likely_cause"] = payload["likelyCause"]
+        incident["recommended_actions"] = payload["recommendedActions"]
+
+    def _incident_anomalies_local(
+        self,
+        data: dict[str, list[dict[str, Any]]],
+        incident_id: str,
+    ) -> list[dict[str, Any]]:
+        anomaly_ids = {
+            event.get("anomaly_id")
+            for event in data["incident_events"]
+            if event.get("incident_id") == incident_id
+        }
+        return [
+            anomaly for anomaly in self._read_anomalies()
+            if anomaly.get("id") in anomaly_ids
+        ]
+
     def _group_postgres(self, anomaly: dict[str, Any]) -> dict[str, Any]:
         with psycopg.connect(get_settings().database_url) as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 incident = self._find_related_postgres(cur, anomaly)
                 if incident:
                     incident_id = incident["id"]
+                    previous_severity = incident["severity"]
                     cur.execute(
                         """
                         UPDATE incidents
@@ -153,6 +198,7 @@ class IncidentGroupingService:
                     incident = dict(cur.fetchone())
                 else:
                     incident_id = str(uuid4())
+                    previous_severity = None
                     cur.execute(
                         """
                         INSERT INTO incidents
@@ -175,6 +221,7 @@ class IncidentGroupingService:
                     )
                     incident = dict(cur.fetchone())
                 self._attach_postgres(cur, incident_id, anomaly)
+                self._maybe_summarize_postgres(cur, incident, previous_severity)
                 return incident
 
     def _find_related_postgres(self, cur, anomaly: dict[str, Any]) -> dict[str, Any] | None:
@@ -248,6 +295,51 @@ class IncidentGroupingService:
             ),
         )
 
+    def _maybe_summarize_postgres(
+        self,
+        cur,
+        incident: dict[str, Any],
+        previous_severity: str | None,
+    ) -> None:
+        if not should_summarize(incident, previous_severity):
+            return
+        anomalies = self._incident_anomalies_postgres(cur, incident["id"])
+        result = self.ai_summary_service.summarize_incident(incident, anomalies)
+        payload = {**result.payload, "source": result.source}
+        if result.error:
+            payload["error"] = result.error
+        ai_summary = json.dumps(payload, sort_keys=True)
+        cur.execute(
+            """
+            UPDATE incidents
+            SET ai_summary = %s,
+                likely_cause = %s,
+                recommended_actions = %s
+            WHERE id = %s
+            """,
+            (ai_summary, payload["likelyCause"], Jsonb(payload["recommendedActions"]), incident["id"]),
+        )
+        incident["ai_summary"] = ai_summary
+        incident["likely_cause"] = payload["likelyCause"]
+        incident["recommended_actions"] = payload["recommendedActions"]
+
+    def _incident_anomalies_postgres(self, cur, incident_id: str) -> list[dict[str, Any]]:
+        cur.execute(
+            """
+            SELECT a.id::text, a.project_id::text, a.service, a.environment,
+                   a.anomaly_type, a.severity, a.score::float,
+                   a.baseline_value::float, a.observed_value::float,
+                   a.window_start::text, a.window_end::text, a.status,
+                   a.fingerprint_hash, a.metadata, a.created_at::text
+            FROM incident_events ie
+            JOIN anomalies a ON a.id = ie.anomaly_id
+            WHERE ie.incident_id = %s
+            ORDER BY a.created_at ASC
+            """,
+            (incident_id,),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
     def _auto_resolve_postgres(self, current_time: datetime | None = None) -> list[dict[str, Any]]:
         now = current_time or datetime.now(UTC)
         cutoff = now - timedelta(minutes=get_settings().incident_auto_resolve_cooldown_minutes)
@@ -276,6 +368,11 @@ class IncidentGroupingService:
             "incident_events": data.get("incident_events", []),
         }
 
+    def _read_anomalies(self) -> list[dict[str, Any]]:
+        if not self.anomalies_path.exists():
+            return []
+        return json.loads(self.anomalies_path.read_text(encoding="utf-8") or "[]")
+
     def _write(self, data: dict[str, list[dict[str, Any]]]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
@@ -297,6 +394,16 @@ def title_for_anomaly(anomaly: dict[str, Any]) -> str:
 
 def max_severity(current: str, candidate: str) -> str:
     return candidate if SEVERITY_RANK.get(candidate, 0) > SEVERITY_RANK.get(current, 0) else current
+
+
+def should_summarize(incident: dict[str, Any], previous_severity: str | None) -> bool:
+    if SEVERITY_RANK.get(incident.get("severity", ""), 0) < SEVERITY_RANK["high"]:
+        return False
+    if not incident.get("ai_summary"):
+        return True
+    if previous_severity is None:
+        return True
+    return SEVERITY_RANK.get(incident["severity"], 0) > SEVERITY_RANK.get(previous_severity, 0)
 
 
 def _incident_event(incident_id: str, anomaly: dict[str, Any], now: str) -> dict[str, Any]:

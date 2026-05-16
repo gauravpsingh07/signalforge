@@ -1,6 +1,6 @@
 # Demo Script
 
-Phase 6 demo:
+Phase 7 demo:
 
 1. Start the FastAPI service.
 2. Run `GET /health` or open the generated OpenAPI docs at `/docs`.
@@ -21,7 +21,7 @@ Phase 6 demo:
 16. Run the worker once per queued spike event.
 17. Open `/projects/{projectId}/anomalies` and verify deterministic anomalies appear.
 18. Open `/projects/{projectId}/incidents` and verify related anomalies are grouped into an open incident.
-19. Open the incident detail page and verify the timeline, related anomalies, fingerprints, and Phase 7 AI summary placeholder appear.
+19. Open the incident detail page and verify the timeline, related anomalies, fingerprints, and AI summary card appear. If `GEMINI_API_KEY` is not configured, verify the deterministic fallback summary is shown.
 20. Click Resolve and verify the incident status changes to resolved.
 
-Future demo phases will add Gemini AI summaries, Discord alerts, and pipeline observability.
+Future demo phases will add Discord alerts and pipeline observability.

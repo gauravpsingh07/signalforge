@@ -103,9 +103,61 @@
       <div class="space-y-6">
         <section class="surface rounded-lg p-5">
           <h2 class="text-lg font-semibold">AI Summary</h2>
-          <div class="mt-4 rounded border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-500">
-            Gemini incident summaries are available after Phase 7. This phase stores nullable summary fields without generating AI output.
-          </div>
+          {#if detail.incident.ai_summary_payload}
+            <div class="mt-4 space-y-4">
+              <div class="rounded border border-slate-200 bg-white p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <p class="font-semibold">{detail.incident.ai_summary_payload.affectedService}</p>
+                  <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                    {detail.incident.ai_summary_payload.source ?? 'gemini'} - {detail.incident.ai_summary_payload.confidence}
+                  </span>
+                </div>
+                <p class="mt-3 text-sm text-slate-700">{detail.incident.ai_summary_payload.summary}</p>
+              </div>
+
+              <div class="grid gap-3 md:grid-cols-2">
+                <div class="rounded border border-slate-200 bg-white p-4">
+                  <h3 class="font-semibold">Impact</h3>
+                  <p class="mt-2 text-sm text-slate-600">{detail.incident.ai_summary_payload.impact}</p>
+                </div>
+                <div class="rounded border border-slate-200 bg-white p-4">
+                  <h3 class="font-semibold">Likely Cause</h3>
+                  <p class="mt-2 text-sm text-slate-600">{detail.incident.ai_summary_payload.likelyCause}</p>
+                </div>
+              </div>
+
+              <div class="rounded border border-slate-200 bg-white p-4">
+                <h3 class="font-semibold">Recommended Actions</h3>
+                <ul class="mt-3 space-y-2 text-sm text-slate-600">
+                  {#each detail.incident.ai_summary_payload.recommendedActions as action}
+                    <li class="flex gap-2"><span class="text-signal">-</span><span>{action}</span></li>
+                  {/each}
+                </ul>
+              </div>
+
+              <div class="rounded border border-slate-200 bg-white p-4">
+                <h3 class="font-semibold">Summary Timeline</h3>
+                <div class="mt-3 space-y-3">
+                  {#each detail.incident.ai_summary_payload.timeline as item}
+                    <div class="text-sm">
+                      <p class="text-xs text-slate-500">{item.time}</p>
+                      <p class="text-slate-700">{item.event}</p>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+
+              {#if detail.incident.ai_summary_payload.error}
+                <div class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Gemini response was unavailable or invalid, so SignalForge used the deterministic fallback summary.
+                </div>
+              {/if}
+            </div>
+          {:else}
+            <div class="mt-4 rounded border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-500">
+              No summary has been generated yet. High and critical incidents are summarized after deterministic detection and grouping.
+            </div>
+          {/if}
         </section>
 
         <section class="surface overflow-hidden rounded-lg">

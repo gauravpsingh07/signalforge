@@ -12,9 +12,9 @@
 8. Discord alerts are sent for critical incidents and recoveries.
 9. The SvelteKit dashboard shows service health, events, incidents, and pipeline health.
 
-## Phase 6 Scope
+## Phase 7 Scope
 
-Phase 6 adds incident lifecycle and grouping on top of deterministic anomalies:
+Phase 7 adds Gemini AI incident summaries after deterministic anomalies have been grouped into incidents:
 
 - Monorepo structure.
 - SvelteKit login, dashboard, project list, and project API key settings screens.
@@ -48,12 +48,15 @@ Phase 6 adds incident lifecycle and grouping on top of deterministic anomalies:
 - Manual incident resolution.
 - Simple auto-resolution after a configurable cooldown with no related anomaly updates.
 - Incident list and incident detail APIs.
-- Frontend incident list and detail pages with timeline, related anomalies, related fingerprints, event samples, and a Phase 7 AI summary placeholder.
+- Frontend incident list and detail pages with timeline, related anomalies, related fingerprints, event samples, and structured AI summary rendering.
+- Gemini incident summary service with deterministic local fallback when `GEMINI_API_KEY` is not configured.
+- AI input sanitization that redacts API keys, bearer tokens, JWTs, passwords, cookies, secrets, and authorization strings.
+- Summary caching in incident records so incidents are not regenerated for every event.
 - PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, and incident_events.
 - Docker Compose for local Postgres and Redis.
 - GitHub Actions skeleton.
 
-Gemini AI summaries, Discord alerts, and pipeline-health dashboard features are not implemented in Phase 6.
+Discord alerts and pipeline-health dashboard features are not implemented in Phase 7.
 
 ## API Key Hashing and Ownership Model
 
@@ -133,4 +136,53 @@ Incident titles are generated from anomaly type, such as `High error rate in pay
 
 Resolved incidents are not reused. A later matching anomaly creates a new incident, which preserves lifecycle history. Operators can resolve incidents manually through `POST /incidents/{incident_id}/resolve`. The worker also auto-resolves stale open incidents after `INCIDENT_AUTO_RESOLVE_COOLDOWN_MINUTES` when no related anomaly has updated them.
 
-The `incidents` table stores current lifecycle state. The `incident_events` table links incidents to anomalies and, when available, event fingerprints or event IDs. This keeps noisy anomaly records grouped into investigation units without requiring Gemini or alerting in this phase.
+The `incidents` table stores current lifecycle state. The `incident_events` table links incidents to anomalies and, when available, event fingerprints or event IDs. This keeps noisy anomaly records grouped into investigation units before Gemini or alerting runs.
+
+## AI Incident Summaries
+
+Gemini is post-detection summarization only. The sequence is:
+
+```text
+event -> rollup/fingerprint -> deterministic anomaly -> grouped incident -> AI summary
+```
+
+The worker calls the AI summary service only for high or critical incidents when:
+
+- a new high or critical incident is created;
+- an existing incident materially escalates to a higher severity;
+- the incident has no cached summary yet.
+
+The worker does not call Gemini for low-level events or to classify anomalies.
+
+The summary input is a sanitized context object:
+
+```text
+incident:
+  service, environment, severity, started_at, updated_at
+anomaly_metrics:
+  type, severity, score, baseline_value, observed_value, window
+top_fingerprints:
+  fingerprint hashes only
+sample_messages:
+  redacted event messages
+timeline:
+  anomaly detection timestamps
+```
+
+Sensitive keys such as `api_key`, `token`, `secret`, `password`, `authorization`, `cookie`, and `jwt` are replaced with `[REDACTED]`. Raw SignalForge ingestion keys, bearer tokens, and JWT-shaped values are redacted from text before any Gemini call.
+
+Gemini is asked for strict JSON with this contract:
+
+```json
+{
+  "summary": "Short incident summary in 2-3 sentences.",
+  "affectedService": "payment-api",
+  "impact": "Checkout requests are timing out for some users.",
+  "likelyCause": "Payment provider timeout or insufficient retry handling.",
+  "timeline": [{"time": "16:00", "event": "Error rate exceeded baseline"}],
+  "recommendedActions": ["Check payment provider status"],
+  "confidence": "medium"
+}
+```
+
+If `GEMINI_API_KEY` is not configured, or Gemini returns invalid JSON, SignalForge stores a deterministic fallback summary. The API parses the cached summary and exposes it as `ai_summary_payload` for the incident detail UI.
