@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -17,14 +18,21 @@ class LocalJobStatusService:
             return
         jobs = self._read()
         current = jobs.get(job_id, {})
+        now = datetime.now(UTC).isoformat()
         current.update(
             {
                 "id": job_id,
                 "status": status,
                 "attempts": attempts,
                 "error_message": error_message,
+                "created_at": current.get("created_at") or now,
             }
         )
+        if status == "processing":
+            current["started_at"] = current.get("started_at") or now
+            current["completed_at"] = None
+        elif status in {"completed", "failed", "dead_letter"}:
+            current["completed_at"] = now
         jobs[job_id] = current
         self._write(jobs)
 

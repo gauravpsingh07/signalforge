@@ -2,13 +2,13 @@
 
 SignalForge is a portfolio-scale observability platform for application events. The full system is designed to ingest logs and events, process them asynchronously, detect anomalies, group incidents, generate AI incident summaries, send alerts, and expose pipeline health.
 
-Phase 8 implements Discord incident alerts and alert deduplication. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, incident grouping, structured incident summaries, Discord alert logging, incident list/detail pages, manual resolution, and an event explorer.
+Phase 9 implements pipeline observability and worker health. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, incident grouping, structured incident summaries, Discord alert logging, incident list/detail pages, manual resolution, an event explorer, pipeline health APIs, worker job visibility, and a pipeline-health dashboard.
 
 ## Why This Is Not a Simple Log Viewer
 
 The project is planned around a distributed event pipeline rather than a raw log table. The intended architecture separates request-time ingestion from background processing, analytics storage, incident grouping, AI summary generation, alert delivery, and internal pipeline observability.
 
-Phase 8 detects anomalies from rollups and fingerprints using Python logic, groups related anomalies into incidents, summarizes high and critical incidents with Gemini when configured, and sends or logs deduplicated Discord alerts for incident open, escalation, and recovery states. Pipeline observability is not implemented yet.
+Phase 9 keeps anomaly detection, incident grouping, AI summaries, and Discord alerts downstream of worker processing, then exposes the pipeline state itself through authenticated health and worker-job APIs.
 
 ## Architecture Placeholder
 
@@ -27,9 +27,9 @@ Client app
 
 | Layer | Technology | Current Status |
 | --- | --- | --- |
-| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, anomaly table, incident pages with AI summaries and alert history, event explorer |
-| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, event search, metrics, anomalies, incidents, alerts |
-| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups, anomaly detection, incident grouping, AI summary generation, Discord alerts |
+| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, anomaly table, incident pages with AI summaries and alert history, event explorer, pipeline-health view |
+| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, event search, metrics, anomalies, incidents, alerts, pipeline health |
+| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups, anomaly detection, incident grouping, AI summary generation, Discord alerts, job timestamps |
 | Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, incident_events, alerts |
 | Queue | Redis/QStash-compatible | Queue abstraction with local JSONL fallback |
 | Event Store | ClickHouse/Tinybird-compatible | Schema placeholder |
@@ -110,7 +110,7 @@ Do not commit real secrets or local `.env` files.
 7. Phase 6: Incident grouping and lifecycle. Implemented.
 8. Phase 7: Gemini incident summaries. Implemented.
 9. Phase 8: Discord alerts. Implemented.
-10. Phase 9: Pipeline observability.
+10. Phase 9: Pipeline observability. Implemented.
 11. Phase 10: Demo scripts, tests, and hardening.
 12. Phase 11: Free-tier deployment docs.
 13. Phase 12: Portfolio polish and screenshots.
@@ -154,6 +154,8 @@ Phase 6 tests cover incident grouping, service separation, severity escalation, 
 Phase 7 tests cover AI input sanitization, missing-key fallback summaries, valid Gemini JSON parsing and storage, invalid Gemini output fallback, summary regeneration suppression, and incident detail summary payloads.
 
 Phase 8 tests cover missing webhook skip logging, sent alert recording, open alert deduplication, severity escalation alerts, recovery alerts, failed webhook recording, alert history APIs, and manual-resolution recovery alert logging.
+
+Phase 9 tests cover pipeline-health counts, queue depth, failed/dead-letter totals, average processing latency, alert failure counts, worker job filtering, retry requeue behavior, endpoint authentication, and local worker job timestamp persistence.
 
 ## Demo Ingestion
 
@@ -227,6 +229,16 @@ Alerts are deduplicated by incident, channel, and alert type:
 
 If `DISCORD_WEBHOOK_URL` is missing, the alert is recorded with status `skipped`. If Discord returns an error, the alert is recorded with status `failed`. Both paths keep the worker and API pipeline running. Alert history is visible on the incident detail page and project settings page.
 
+## Pipeline Observability
+
+SignalForge exposes authenticated pipeline-health APIs for the jobs owned by the current user's projects:
+
+- `GET /pipeline-health` and `GET /worker-health` return API status, queue provider, local queue depth when available, worker job counts by status, failed/dead-letter count, completed jobs in the last hour, average processing latency, last processed timestamp, recent ingestion count, and alert delivery failures.
+- `GET /pipeline/jobs` returns recent worker jobs with optional status, type, and time filters. The response intentionally omits raw queue payloads while showing safe error and timing fields.
+- `POST /pipeline/jobs/{job_id}/retry` requeues failed or dead-letter local jobs when a safe payload reference is available.
+
+The `/pipeline-health` frontend page shows queue mode, job counters, worker latency, failed alert delivery count, recent errors, worker job history, and retry actions for failed jobs.
+
 ## Screenshots
 
 After later polish, capture screenshots for:
@@ -236,6 +248,7 @@ After later polish, capture screenshots for:
 - Anomaly table/timeline.
 - Incident list and incident detail.
 - Discord alert history.
+- Pipeline-health dashboard.
 - Event explorer with selected event details.
 - Project settings with ingestion instructions.
 

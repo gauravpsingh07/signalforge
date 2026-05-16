@@ -1,6 +1,6 @@
 # API Reference
 
-Phase 8 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, incident lifecycle APIs, cached AI incident summaries, and Discord alert history.
+Phase 9 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, incident lifecycle APIs, cached AI incident summaries, Discord alert history, and pipeline observability APIs.
 
 ## Implemented
 
@@ -437,9 +437,104 @@ Response:
 }
 ```
 
+## Pipeline Observability
+
+All pipeline observability routes require dashboard JWT auth and are scoped to projects owned by the current user.
+
+### `GET /pipeline-health`
+
+Alias: `GET /worker-health`
+
+Returns API status, queue mode, worker job counts, failed/dead-letter totals, recent latency, ingestion volume, and alert delivery failures.
+
+Response:
+
+```json
+{
+  "api": {
+    "service": "SignalForge API",
+    "status": "healthy",
+    "version": "0.0.1",
+    "timestamp": "2026-05-15T16:05:00+00:00"
+  },
+  "queue": {
+    "provider": "local",
+    "depth": 2
+  },
+  "jobs": {
+    "counts": {
+      "queued": 1,
+      "processing": 0,
+      "completed": 20,
+      "failed": 1,
+      "dead_letter": 1
+    },
+    "failedOrDeadLetter": 2,
+    "completedLastHour": 20,
+    "averageProcessingLatencyMs": 42.5,
+    "lastProcessedAt": "2026-05-15T16:04:00+00:00"
+  },
+  "ingestion": {
+    "eventsAcceptedLastHour": 24
+  },
+  "alerts": {
+    "failedDeliveries": 1
+  }
+}
+```
+
+### `GET /pipeline/jobs`
+
+Returns recent worker jobs. Raw payloads are not exposed.
+
+Supported filters:
+
+- `status`
+- `job_type`
+- `start`
+- `end`
+- `limit`
+
+Response:
+
+```json
+{
+  "jobs": [
+    {
+      "id": "job_uuid",
+      "job_type": "process_event",
+      "entity_id": "project_uuid",
+      "status": "failed",
+      "attempts": 2,
+      "max_attempts": 3,
+      "error_message": "message field required",
+      "created_at": "2026-05-15T16:00:00+00:00",
+      "started_at": "2026-05-15T16:00:01+00:00",
+      "completed_at": "2026-05-15T16:00:02+00:00",
+      "processing_latency_ms": 1000,
+      "has_payload": true
+    }
+  ]
+}
+```
+
+### `POST /pipeline/jobs/{job_id}/retry`
+
+Retries a failed or dead-letter job when a safe payload reference is still available.
+
+Response:
+
+```json
+{
+  "job": {
+    "id": "job_uuid",
+    "status": "queued",
+    "error_message": null
+  }
+}
+```
+
 ## Placeholders
 
 - `/v1/events/status`
 - `/metrics/status`
-
-Future phases will add pipeline-health APIs.

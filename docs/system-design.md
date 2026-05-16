@@ -12,9 +12,9 @@
 8. Discord alerts are sent for critical incidents and recoveries.
 9. The SvelteKit dashboard shows service health, events, incidents, and pipeline health.
 
-## Phase 8 Scope
+## Phase 9 Scope
 
-Phase 8 adds Discord alert delivery and alert deduplication after deterministic anomalies have been grouped into incidents:
+Phase 9 adds pipeline observability and worker health on top of the completed ingestion, incident, summary, and alerting pipeline:
 
 - Monorepo structure.
 - SvelteKit login, dashboard, project list, and project API key settings screens.
@@ -56,11 +56,17 @@ Phase 8 adds Discord alert delivery and alert deduplication after deterministic 
 - Alert deduplication by incident, channel, and alert type.
 - Alert logging with `sent`, `skipped`, and `failed` statuses.
 - Alert history in incident detail and project settings.
+- Authenticated `/pipeline-health` and `/worker-health` APIs.
+- Recent worker job listing with status, type, and time filters.
+- Failed and dead-letter job counts.
+- Worker processing timestamps and latency calculations.
+- Queue provider and local queue depth reporting.
+- Alert delivery failure count.
+- Safe retry endpoint for failed or dead-letter jobs with available payload references.
+- Frontend `/pipeline-health` dashboard with job counters, latency, failures, queue mode, and recent worker jobs.
 - PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, incident_events, and alerts.
 - Docker Compose for local Postgres and Redis.
 - GitHub Actions skeleton.
-
-Pipeline-health dashboard features are not implemented in Phase 8.
 
 ## API Key Hashing and Ownership Model
 
@@ -225,3 +231,26 @@ Every attempted alert is recorded in the `alerts` table or local fallback file:
 - `failed` when the webhook call raises or returns an error.
 
 Skipped and failed alerts do not crash event processing, incident grouping, manual resolution, or auto-resolution. This keeps alerting as a side effect of the incident lifecycle, not a dependency of ingestion or detection.
+
+## Pipeline Observability
+
+Pipeline observability is scoped to the authenticated user's projects. The API derives the user's project IDs, filters worker jobs and alert failures to those projects, and returns operational state without exposing raw queue payloads.
+
+The health API reports:
+
+```text
+api status and timestamp
+queue provider: local, redis, or qstash
+local queue depth when available
+worker_jobs counts by queued, processing, completed, failed, dead_letter
+failed + dead_letter total
+completed jobs in the last hour
+average processing latency from started_at/completed_at
+last processed job timestamp
+accepted process_event jobs in the last hour
+failed alert delivery count
+```
+
+The worker marks jobs with `started_at` when processing begins and `completed_at` when a job completes, fails, or moves to dead letter. The local fallback keeps the original safe payload reference on the worker job record so failed local jobs can be requeued through `POST /pipeline/jobs/{job_id}/retry`.
+
+Retry is intentionally narrow: only failed and dead-letter jobs with an existing payload reference can be retried, and ownership is checked before the job is requeued. The retry endpoint updates the job back to `queued`, clears the error message, clears processing timestamps, and appends the payload to the configured local queue.

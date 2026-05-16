@@ -1,6 +1,6 @@
 # Demo Script
 
-Phase 8 demo:
+Phase 9 demo:
 
 1. Start the FastAPI service.
 2. Run `GET /health` or open the generated OpenAPI docs at `/docs`.
@@ -25,5 +25,8 @@ Phase 8 demo:
 20. Verify the incident detail page shows alert history. If `DISCORD_WEBHOOK_URL` is not configured, verify a skipped Discord alert is logged.
 21. Open project settings and verify the Discord alerts card shows whether the global webhook is configured.
 22. Click Resolve and verify the incident status changes to resolved and a resolved alert is logged.
+23. Open `/pipeline-health` and verify queue provider, queue depth, worker job counts, average latency, completed jobs, and alert delivery failures are visible.
+24. Filter the worker job table by failed or dead-letter jobs.
+25. Retry a failed local job with an available payload and verify it returns to queued.
 
-Future demo phases will add pipeline observability.
+Future demo phases will add hardening, deployment documentation, and final portfolio polish.

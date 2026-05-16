@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.errors import http_error_handler, validation_error_handler
-from app.routes import api_keys, auth, events, health, incidents, metrics, projects
+from app.routes import api_keys, auth, events, health, incidents, metrics, pipeline, projects
 
 
 settings = get_settings()
@@ -35,6 +35,7 @@ app.include_router(api_keys.router)
 app.include_router(events.router)
 app.include_router(incidents.router)
 app.include_router(metrics.router)
+app.include_router(pipeline.router)
 
 
 @app.get("/", tags=["system"])

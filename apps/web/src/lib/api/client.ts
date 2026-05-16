@@ -166,6 +166,47 @@ export type AlertRecord = {
   created_at: string;
 };
 
+export type PipelineJob = {
+  id: string;
+  job_type: string | null;
+  entity_id: string | null;
+  status: string;
+  attempts: number;
+  max_attempts: number;
+  error_message: string | null;
+  created_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  processing_latency_ms: number | null;
+  has_payload: boolean;
+};
+
+export type PipelineHealth = {
+  api: {
+    service: string;
+    status: string;
+    version: string;
+    timestamp: string;
+  };
+  queue: {
+    provider: string;
+    depth: number | null;
+  };
+  jobs: {
+    counts: Record<string, number>;
+    failedOrDeadLetter: number;
+    completedLastHour: number;
+    averageProcessingLatencyMs: number | null;
+    lastProcessedAt: string | null;
+  };
+  ingestion: {
+    eventsAcceptedLastHour: number;
+  };
+  alerts: {
+    failedDeliveries: number;
+  };
+};
+
 export type IncidentTimelineItem = {
   time: string;
   label: string;
@@ -385,6 +426,38 @@ export function listAlerts(
   }
   const suffix = params.toString() ? `?${params.toString()}` : '';
   return apiRequest<{ alerts: AlertRecord[]; discordConfigured: boolean }>(`/projects/${projectId}/alerts${suffix}`, {}, token);
+}
+
+export function getPipelineHealth(token: string): Promise<PipelineHealth> {
+  return apiRequest<PipelineHealth>('/pipeline-health', {}, token);
+}
+
+export function listPipelineJobs(
+  token: string,
+  filters: {
+    status?: string;
+    job_type?: string;
+    start?: string;
+    end?: string;
+    limit?: number;
+  } = {}
+): Promise<{ jobs: PipelineJob[] }> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, String(value));
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest<{ jobs: PipelineJob[] }>(`/pipeline/jobs${suffix}`, {}, token);
+}
+
+export function retryPipelineJob(token: string, jobId: string): Promise<{ job: PipelineJob }> {
+  return apiRequest<{ job: PipelineJob }>(
+    `/pipeline/jobs/${jobId}/retry`,
+    {
+      method: 'POST'
+    },
+    token
+  );
 }
 
 export { API_BASE_URL };

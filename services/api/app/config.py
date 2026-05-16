@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     ingest_max_metadata_bytes: int = 8192
     local_queue_path: str = "../../tmp/signalforge-events.jsonl"
     local_event_store_path: str = "../../tmp/signalforge-processed-events.jsonl"
+    local_worker_jobs_path: str = "../../tmp/signalforge-worker-jobs.json"
     local_metric_rollups_path: str = "../../tmp/signalforge-metric-rollups.json"
     local_anomalies_path: str = "../../tmp/signalforge-anomalies.json"
     local_incidents_path: str = "../../tmp/signalforge-incidents.json"

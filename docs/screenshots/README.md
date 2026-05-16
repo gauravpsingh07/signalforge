@@ -1,3 +1,3 @@
 # Screenshots
 
-Screenshots will be added after the dashboard, event explorer, anomaly views, incident details, alerts, and pipeline observability are implemented.
+Screenshots will be added after final portfolio polish. Capture dashboard, event explorer, anomaly views, incident details, alert history, and pipeline-health views.
