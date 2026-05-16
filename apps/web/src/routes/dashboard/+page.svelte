@@ -118,6 +118,12 @@
       <a class="mt-4 inline-flex rounded bg-signal px-4 py-2 font-medium text-white" href="/login">Go to Login</a>
     </div>
   {:else}
+    {#if error}
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <span>{error}</span>
+        <button class="rounded border border-red-300 px-3 py-1 font-medium" type="button" onclick={loadProjects}>Retry</button>
+      </div>
+    {/if}
     <div class="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
       <form class="surface rounded-lg p-5" onsubmit={handleCreate}>
         <h2 class="text-lg font-semibold">Create Project</h2>
@@ -138,9 +144,6 @@
             bind:value={description}
             placeholder="Optional project context"
           ></textarea>
-          {#if error}
-            <div class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-          {/if}
           <button class="rounded bg-signal px-4 py-2 font-medium text-white disabled:bg-slate-300" disabled={saving}>
             {saving ? 'Creating...' : 'Create Project'}
           </button>

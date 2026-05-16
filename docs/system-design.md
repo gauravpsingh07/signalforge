@@ -12,9 +12,9 @@
 8. Discord alerts are sent for critical incidents and recoveries.
 9. The SvelteKit dashboard shows service health, events, incidents, and pipeline health.
 
-## Phase 9 Scope
+## Phase 10 Scope
 
-Phase 9 adds pipeline observability and worker health on top of the completed ingestion, incident, summary, and alerting pipeline:
+Phase 10 adds reproducible demo flow, testing, UI error-state hardening, and security guardrails on top of the completed ingestion, incident, summary, alerting, and pipeline observability system:
 
 - Monorepo structure.
 - SvelteKit login, dashboard, project list, and project API key settings screens.
@@ -64,6 +64,12 @@ Phase 9 adds pipeline observability and worker health on top of the completed in
 - Alert delivery failure count.
 - Safe retry endpoint for failed or dead-letter jobs with available payload references.
 - Frontend `/pipeline-health` dashboard with job counters, latency, failures, queue mode, and recent worker jobs.
+- Demo scripts for normal traffic, error spikes, latency spikes, recovery traffic, and local fallback reset.
+- Request-size guard that rejects oversized API requests with a consistent JSON error.
+- Bounded pagination limits on project collection routes and pipeline job listing.
+- Constant-time API key hash comparison.
+- Dashboard retry buttons, accessible filter labels, chart empty states, and sanitized event-message rendering.
+- Tests for script dry-runs, request-size errors, pagination validation, local queue behavior, and requeue append behavior.
 - PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, incident_events, and alerts.
 - Docker Compose for local Postgres and Redis.
 - GitHub Actions skeleton.

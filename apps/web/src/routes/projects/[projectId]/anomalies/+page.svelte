@@ -53,18 +53,23 @@
   </div>
 
   <form class="surface grid gap-3 rounded-lg p-5 md:grid-cols-6" onsubmit={(event) => { event.preventDefault(); loadAnomalies(); }}>
-    <input class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={service} placeholder="service" />
-    <input class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={environment} placeholder="environment" />
-    <select class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={severity}>
+    <label class="sr-only" for="anomaly-service">Service</label>
+    <input id="anomaly-service" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={service} placeholder="service" />
+    <label class="sr-only" for="anomaly-environment">Environment</label>
+    <input id="anomaly-environment" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={environment} placeholder="environment" />
+    <label class="sr-only" for="anomaly-severity">Severity</label>
+    <select id="anomaly-severity" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={severity}>
       <option value="">all severities</option>
       <option value="high">high</option>
       <option value="critical">critical</option>
     </select>
-    <select class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={status}>
+    <label class="sr-only" for="anomaly-status">Status</label>
+    <select id="anomaly-status" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={status}>
       <option value="">all statuses</option>
       <option value="open">open</option>
     </select>
-    <select class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={anomalyType}>
+    <label class="sr-only" for="anomaly-type">Type</label>
+    <select id="anomaly-type" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={anomalyType}>
       <option value="">all types</option>
       <option value="error_rate_spike">error rate spike</option>
       <option value="latency_spike">latency spike</option>
@@ -81,7 +86,10 @@
       <a class="mt-4 inline-flex rounded bg-signal px-4 py-2 font-medium text-white" href="/login">Go to Login</a>
     </div>
   {:else if error}
-    <div class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+      <span>{error}</span>
+      <button class="rounded border border-red-300 px-3 py-1 font-medium" type="button" onclick={loadAnomalies}>Retry</button>
+    </div>
   {:else}
     <div class="surface overflow-hidden rounded-lg">
       <table class="w-full border-collapse text-left text-sm">

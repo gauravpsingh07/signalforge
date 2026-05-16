@@ -67,13 +67,16 @@
       <p class="mt-2 text-slate-600">Service-level rollups from processed events.</p>
     </div>
     <div class="flex flex-wrap gap-2">
-      <select class="rounded border border-slate-300 bg-white px-3 py-2 text-sm" bind:value={range} onchange={loadMetrics}>
+      <label class="sr-only" for="overview-range">Time range</label>
+      <select id="overview-range" class="rounded border border-slate-300 bg-white px-3 py-2 text-sm" bind:value={range} onchange={loadMetrics}>
         <option value="1h">1h</option>
         <option value="6h">6h</option>
         <option value="24h">24h</option>
       </select>
-      <input class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={service} placeholder="service" />
-      <input class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={environment} placeholder="environment" />
+      <label class="sr-only" for="overview-service">Service</label>
+      <input id="overview-service" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={service} placeholder="service" />
+      <label class="sr-only" for="overview-environment">Environment</label>
+      <input id="overview-environment" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={environment} placeholder="environment" />
       <button class="rounded bg-signal px-4 py-2 text-sm font-medium text-white" onclick={loadMetrics}>Apply</button>
       <a class="rounded border border-slate-300 px-4 py-2 text-sm font-medium" href={`/projects/${projectId}/events`}>Events</a>
       <a class="rounded border border-slate-300 px-4 py-2 text-sm font-medium" href={`/projects/${projectId}/anomalies`}>Anomalies</a>
@@ -88,7 +91,10 @@
       <a class="mt-4 inline-flex rounded bg-signal px-4 py-2 font-medium text-white" href="/login">Go to Login</a>
     </div>
   {:else if error}
-    <div class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+      <span>{error}</span>
+      <button class="rounded border border-red-300 px-3 py-1 font-medium" type="button" onclick={loadMetrics}>Retry</button>
+    </div>
   {:else if loading}
     <div class="surface rounded-lg p-8 text-center text-sm text-slate-500">Loading metrics...</div>
   {:else if metrics}

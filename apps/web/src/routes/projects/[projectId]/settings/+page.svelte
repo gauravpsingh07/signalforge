@@ -195,7 +195,10 @@
   {/if}
 
   {#if error}
-    <div class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+      <span>{error}</span>
+      <button class="rounded border border-red-300 px-3 py-1 font-medium" type="button" onclick={loadKeys}>Retry</button>
+    </div>
   {/if}
 
   <div class="surface overflow-hidden rounded-lg">

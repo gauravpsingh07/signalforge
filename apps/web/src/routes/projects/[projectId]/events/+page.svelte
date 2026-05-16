@@ -15,6 +15,10 @@
   let level = $state('');
   let search = $state('');
 
+  function safeText(value: string) {
+    return value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+  }
+
   async function loadEvents() {
     token = readAccessToken();
     if (!token) {
@@ -52,9 +56,12 @@
   </div>
 
   <form class="surface grid gap-3 rounded-lg p-5 md:grid-cols-5" onsubmit={(event) => { event.preventDefault(); loadEvents(); }}>
-    <input class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={service} placeholder="service" />
-    <input class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={environment} placeholder="environment" />
-    <select class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={level}>
+    <label class="sr-only" for="event-service">Service</label>
+    <input id="event-service" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={service} placeholder="service" />
+    <label class="sr-only" for="event-environment">Environment</label>
+    <input id="event-environment" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={environment} placeholder="environment" />
+    <label class="sr-only" for="event-level">Level</label>
+    <select id="event-level" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={level}>
       <option value="">all levels</option>
       <option value="debug">debug</option>
       <option value="info">info</option>
@@ -62,7 +69,8 @@
       <option value="error">error</option>
       <option value="fatal">fatal</option>
     </select>
-    <input class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={search} placeholder="message search" />
+    <label class="sr-only" for="event-search">Message search</label>
+    <input id="event-search" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={search} placeholder="message search" />
     <button class="rounded bg-signal px-4 py-2 text-sm font-medium text-white">Filter</button>
   </form>
 
@@ -73,7 +81,10 @@
       <a class="mt-4 inline-flex rounded bg-signal px-4 py-2 font-medium text-white" href="/login">Go to Login</a>
     </div>
   {:else if error}
-    <div class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+      <span>{error}</span>
+      <button class="rounded border border-red-300 px-3 py-1 font-medium" type="button" onclick={loadEvents}>Retry</button>
+    </div>
   {:else}
     <div class="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
       <div class="surface overflow-hidden rounded-lg">
@@ -103,7 +114,7 @@
                   <td class="px-4 py-3">{event.level}</td>
                   <td class="px-4 py-3">{event.status_code ?? '-'}</td>
                   <td class="px-4 py-3">{event.latency_ms ?? '-'}</td>
-                  <td class="px-4 py-3">{event.message}</td>
+                  <td class="px-4 py-3">{safeText(event.message)}</td>
                 </tr>
               {/each}
             {/if}

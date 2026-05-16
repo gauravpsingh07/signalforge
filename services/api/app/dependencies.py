@@ -1,3 +1,4 @@
+from hmac import compare_digest
 from typing import Annotated
 
 from fastapi import Depends, HTTPException
@@ -60,7 +61,7 @@ async def get_ingestion_api_key(
     if key is None or key.is_revoked:
         raise HTTPException(status_code=401, detail="Invalid ingestion API key")
 
-    if key.key_hash != hash_api_key(raw_key):
+    if not compare_digest(key.key_hash, hash_api_key(raw_key)):
         raise HTTPException(status_code=401, detail="Invalid ingestion API key")
 
     return key

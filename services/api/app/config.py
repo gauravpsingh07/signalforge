@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     ingest_max_batch_size: int = 25
     ingest_max_message_length: int = 2000
     ingest_max_metadata_bytes: int = 8192
+    max_request_body_bytes: int = 1_048_576
     local_queue_path: str = "../../tmp/signalforge-events.jsonl"
     local_event_store_path: str = "../../tmp/signalforge-processed-events.jsonl"
     local_worker_jobs_path: str = "../../tmp/signalforge-worker-jobs.json"

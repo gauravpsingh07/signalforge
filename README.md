@@ -2,13 +2,13 @@
 
 SignalForge is a portfolio-scale observability platform for application events. The full system is designed to ingest logs and events, process them asynchronously, detect anomalies, group incidents, generate AI incident summaries, send alerts, and expose pipeline health.
 
-Phase 9 implements pipeline observability and worker health. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, incident grouping, structured incident summaries, Discord alert logging, incident list/detail pages, manual resolution, an event explorer, pipeline health APIs, worker job visibility, and a pipeline-health dashboard.
+Phase 10 hardens the local demo flow. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, incident grouping, structured incident summaries, Discord alert logging, incident list/detail pages, manual resolution, an event explorer, pipeline health APIs, worker job visibility, a pipeline-health dashboard, reproducible demo scripts, stronger tests, request-size limits, and UI loading/error/empty-state hardening.
 
 ## Why This Is Not a Simple Log Viewer
 
 The project is planned around a distributed event pipeline rather than a raw log table. The intended architecture separates request-time ingestion from background processing, analytics storage, incident grouping, AI summary generation, alert delivery, and internal pipeline observability.
 
-Phase 9 keeps anomaly detection, incident grouping, AI summaries, and Discord alerts downstream of worker processing, then exposes the pipeline state itself through authenticated health and worker-job APIs.
+Phase 10 keeps anomaly detection, incident grouping, AI summaries, and Discord alerts downstream of worker processing, then focuses on making that full system reliable to run and explain locally.
 
 ## Architecture Placeholder
 
@@ -111,7 +111,7 @@ Do not commit real secrets or local `.env` files.
 8. Phase 7: Gemini incident summaries. Implemented.
 9. Phase 8: Discord alerts. Implemented.
 10. Phase 9: Pipeline observability. Implemented.
-11. Phase 10: Demo scripts, tests, and hardening.
+11. Phase 10: Demo scripts, tests, and hardening. Implemented.
 12. Phase 11: Free-tier deployment docs.
 13. Phase 12: Portfolio polish and screenshots.
 
@@ -128,10 +128,12 @@ SignalForge is designed for local and portfolio-scale demos. External providers 
 - AI summary prompts are built from sanitized incident context and redact API keys, tokens, secrets, cookies, and authorization strings before any Gemini call.
 - Discord webhooks are configured through environment variables. Webhook URLs are not exposed in the frontend, and missing webhooks are logged as skipped alerts instead of failing processing.
 - CORS origins are environment-driven in the API service.
+- Oversized API requests are rejected with a consistent JSON `413` response before route handling.
+- Collection endpoints apply bounded pagination limits for portfolio-scale local use.
 
 ## Testing
 
-Current Phase 1 validation:
+Current validation:
 
 ```bash
 cd apps/web && npm run check && npm run build
@@ -157,6 +159,72 @@ Phase 8 tests cover missing webhook skip logging, sent alert recording, open ale
 
 Phase 9 tests cover pipeline-health counts, queue depth, failed/dead-letter totals, average processing latency, alert failure counts, worker job filtering, retry requeue behavior, endpoint authentication, and local worker job timestamp persistence.
 
+Phase 10 tests cover request-size hardening, bounded pagination validation, demo script dry runs, local queue FIFO behavior, and retry requeue appends.
+
+## Local Demo Flow
+
+1. Start optional local infrastructure:
+
+```bash
+docker compose up -d postgres redis
+```
+
+2. Run the PostgreSQL migration if using `DATABASE_URL`:
+
+```bash
+psql "postgresql://signalforge:signalforge@localhost:5432/signalforge" -f infra/database/migrations/001_initial_schema.sql
+```
+
+3. Start the API:
+
+```bash
+cd services/api
+python -m pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+4. Start the frontend:
+
+```bash
+cd apps/web
+npm install
+npm run dev
+```
+
+5. Register or log in at `http://localhost:5173/login`, create a project, open project settings, and create a demo API key.
+
+6. Send normal traffic:
+
+```bash
+python scripts/send_demo_events.py --api-url http://localhost:8000 --project-key sf_demo_your_key --count 40
+```
+
+7. Drain queued jobs from another terminal:
+
+```bash
+cd services/worker
+python -m pip install -r requirements.txt
+python -m app.worker --once
+```
+
+Run the worker command once per queued event, or keep repeating it while demo traffic is being generated.
+
+8. Generate a spike and recovery scenario:
+
+```bash
+python scripts/generate_error_spike.py --api-url http://localhost:8000 --project-key sf_demo_your_key
+python scripts/generate_latency_spike.py --api-url http://localhost:8000 --project-key sf_demo_your_key
+python scripts/generate_recovery_events.py --api-url http://localhost:8000 --project-key sf_demo_your_key
+```
+
+9. View `/projects/{projectId}` for rollups, `/projects/{projectId}/anomalies` for deterministic detections, `/projects/{projectId}/incidents` for grouped incidents, incident detail for AI fallback or Gemini summaries and alert history, and `/pipeline-health` for worker/job health.
+
+10. Reset local fallback files when needed:
+
+```bash
+python scripts/reset_demo_project.py --api-url http://localhost:8000 --project-key sf_demo_your_key --yes
+```
+
 ## Demo Ingestion
 
 After starting the API and creating a project API key, send demo events:
@@ -164,6 +232,16 @@ After starting the API and creating a project API key, send demo events:
 ```bash
 python scripts/send_demo_events.py --api-url http://localhost:8000 --project-key sf_demo_your_key --count 40
 ```
+
+Additional Phase 10 scripts generate deterministic demo scenarios:
+
+```bash
+python scripts/generate_error_spike.py --api-url http://localhost:8000 --project-key sf_demo_your_key
+python scripts/generate_latency_spike.py --api-url http://localhost:8000 --project-key sf_demo_your_key
+python scripts/generate_recovery_events.py --api-url http://localhost:8000 --project-key sf_demo_your_key
+```
+
+All demo scripts support `--dry-run` for payload validation without contacting the API.
 
 The API validates the request, applies rate limits, records a queued `worker_jobs` row, writes the job to the configured queue fallback, and returns `202 Accepted` with a job ID. Analytics, AI summaries, and alerting are intentionally outside this request path.
 

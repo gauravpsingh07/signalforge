@@ -1,6 +1,6 @@
 # API Reference
 
-Phase 9 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, incident lifecycle APIs, cached AI incident summaries, Discord alert history, and pipeline observability APIs.
+Phase 10 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, incident lifecycle APIs, cached AI incident summaries, Discord alert history, pipeline observability APIs, bounded pagination, and request-size hardening.
 
 ## Implemented
 
@@ -20,6 +20,22 @@ Returns API service health.
 ### `GET /`
 
 Returns a root API status payload.
+
+## Error Format
+
+Errors use a consistent JSON envelope:
+
+```json
+{
+  "error": {
+    "code": "validation_error",
+    "message": "Request validation failed",
+    "details": []
+  }
+}
+```
+
+Oversized requests return `413` with `code: request_too_large`. Invalid input returns `422`, missing or invalid auth returns `401`, missing owned resources return `404`, and ingestion rate limits return `429` with `Retry-After`.
 
 ## Auth
 
@@ -158,7 +174,7 @@ Response:
 }
 ```
 
-Invalid API keys return `401`, validation failures return `422`, and rate limits return `429` with `Retry-After`.
+Invalid API keys return `401`, validation failures return `422`, oversized requests return `413`, and rate limits return `429` with `Retry-After`.
 
 ## Event Search
 
@@ -174,7 +190,7 @@ Supported query filters:
 - `start`
 - `end`
 - `search`
-- `limit`
+- `limit` from `1` to `200`
 
 Response:
 
@@ -251,7 +267,7 @@ Supported filters:
 - `anomaly_type`
 - `start`
 - `end`
-- `limit`
+- `limit` from `1` to `200`
 
 Response:
 
@@ -287,7 +303,7 @@ Supported filters:
 - `environment`
 - `severity`
 - `status`
-- `limit`
+- `limit` from `1` to `200`
 
 Response:
 
@@ -387,7 +403,7 @@ Supported filters:
 - `incident_id`
 - `status`
 - `channel`
-- `limit`
+- `limit` from `1` to `200`
 
 Response:
 
@@ -493,7 +509,7 @@ Supported filters:
 - `job_type`
 - `start`
 - `end`
-- `limit`
+- `limit` from `1` to `250`
 
 Response:
 

@@ -47,14 +47,18 @@
   </div>
 
   <form class="surface grid gap-3 rounded-lg p-5 md:grid-cols-5" onsubmit={(event) => { event.preventDefault(); loadIncidents(); }}>
-    <input class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={service} placeholder="service" />
-    <input class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={environment} placeholder="environment" />
-    <select class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={severity}>
+    <label class="sr-only" for="incident-service">Service</label>
+    <input id="incident-service" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={service} placeholder="service" />
+    <label class="sr-only" for="incident-environment">Environment</label>
+    <input id="incident-environment" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={environment} placeholder="environment" />
+    <label class="sr-only" for="incident-severity">Severity</label>
+    <select id="incident-severity" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={severity}>
       <option value="">all severities</option>
       <option value="high">high</option>
       <option value="critical">critical</option>
     </select>
-    <select class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={status}>
+    <label class="sr-only" for="incident-status">Status</label>
+    <select id="incident-status" class="rounded border border-slate-300 px-3 py-2 text-sm" bind:value={status}>
       <option value="">all statuses</option>
       <option value="open">open</option>
       <option value="resolved">resolved</option>
@@ -69,7 +73,10 @@
       <a class="mt-4 inline-flex rounded bg-signal px-4 py-2 font-medium text-white" href="/login">Go to Login</a>
     </div>
   {:else if error}
-    <div class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+      <span>{error}</span>
+      <button class="rounded border border-red-300 px-3 py-1 font-medium" type="button" onclick={loadIncidents}>Retry</button>
+    </div>
   {:else if loading}
     <div class="surface rounded-lg p-8 text-center text-sm text-slate-500">Loading incidents...</div>
   {:else if incidents.length === 0}

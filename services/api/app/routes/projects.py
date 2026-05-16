@@ -1,7 +1,7 @@
 from dataclasses import asdict
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.dependencies import get_current_user, get_metadata_store
 from app.schemas.project import ProjectCreateRequest, ProjectPublic, ProjectUpdateRequest
@@ -64,13 +64,12 @@ async def list_project_events(
     start: str | None = None,
     end: str | None = None,
     search: str | None = None,
-    limit: int = 100,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> dict:
     project = await store.get_project(project_id, current_user.id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    bounded_limit = min(max(limit, 1), 200)
     events = EventStoreService().list_events(
         project_id=project.id,
         service=service,
@@ -79,7 +78,7 @@ async def list_project_events(
         start=start,
         end=end,
         search=search,
-        limit=bounded_limit,
+        limit=limit,
     )
     return {"events": events}
 
@@ -131,7 +130,7 @@ async def list_project_anomalies(
     anomaly_type: str | None = None,
     start: str | None = None,
     end: str | None = None,
-    limit: int = 100,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> dict:
     project = await store.get_project(project_id, current_user.id)
     if project is None:
@@ -145,7 +144,7 @@ async def list_project_anomalies(
         anomaly_type=anomaly_type,
         start=start,
         end=end,
-        limit=min(max(limit, 1), 200),
+        limit=limit,
     )
     return {"anomalies": anomalies}
 
@@ -159,7 +158,7 @@ async def list_project_incidents(
     severity: str | None = None,
     service: str | None = None,
     environment: str | None = None,
-    limit: int = 100,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> dict:
     project = await store.get_project(project_id, current_user.id)
     if project is None:
@@ -170,7 +169,7 @@ async def list_project_incidents(
         severity=severity,
         service=service,
         environment=environment,
-        limit=min(max(limit, 1), 200),
+        limit=limit,
     )
     return {"incidents": incidents}
 
@@ -183,7 +182,7 @@ async def list_project_alerts(
     incident_id: str | None = None,
     status: str | None = None,
     channel: str | None = None,
-    limit: int = 100,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> dict:
     project = await store.get_project(project_id, current_user.id)
     if project is None:
@@ -195,7 +194,7 @@ async def list_project_alerts(
             incident_id=incident_id,
             status=status,
             channel=channel,
-            limit=min(max(limit, 1), 200),
+            limit=limit,
         ),
         "discordConfigured": alert_service.discord_configured(),
     }
