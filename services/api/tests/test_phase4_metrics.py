@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -54,7 +55,7 @@ def write_rollup(project_id: str) -> None:
                     "project_id": project_id,
                     "service": "payment-api",
                     "environment": "production",
-                    "bucket_start": "2026-05-15T15:45:00+00:00",
+                    "bucket_start": datetime.now(UTC).replace(second=0, microsecond=0).isoformat(),
                     "bucket_size_seconds": 60,
                     "total_events": 10,
                     "error_events": 2,
