@@ -23,7 +23,11 @@ class WorkerSettings(BaseSettings):
     local_worker_jobs_path: str = "../../tmp/signalforge-worker-jobs.json"
     local_fingerprints_path: str = "../../tmp/signalforge-fingerprints.json"
     local_metric_rollups_path: str = "../../tmp/signalforge-metric-rollups.json"
+    local_anomalies_path: str = "../../tmp/signalforge-anomalies.json"
     ingest_max_metadata_bytes: int = 8192
+    anomaly_min_sample_count: int = 5
+    anomaly_repeated_fingerprint_threshold: int = 5
+    anomaly_fatal_burst_threshold: int = 3
 
     model_config = SettingsConfigDict(
         env_file=".env",

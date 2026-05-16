@@ -2,13 +2,13 @@
 
 SignalForge is a portfolio-scale observability platform for application events. The full system is designed to ingest logs and events, process them asynchronously, detect anomalies, group incidents, generate AI incident summaries, send alerts, and expose pipeline health.
 
-Phase 4 implements metric rollups and the core dashboard. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, dashboard project cards, and an event explorer.
+Phase 5 implements deterministic anomaly detection. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, anomaly views, and an event explorer.
 
 ## Why This Is Not a Simple Log Viewer
 
 The project is planned around a distributed event pipeline rather than a raw log table. The intended architecture separates request-time ingestion from background processing, analytics storage, incident grouping, AI summary generation, alert delivery, and internal pipeline observability.
 
-Phase 4 turns processed events into dashboard metrics. It does not build anomaly detection, incident grouping, AI summaries, alerts, or pipeline observability yet.
+Phase 5 detects anomalies from rollups and fingerprints using Python logic. It does not build incident grouping, AI summaries, alerts, or pipeline observability yet.
 
 ## Architecture Placeholder
 
@@ -27,10 +27,10 @@ Client app
 
 | Layer | Technology | Phase 0 Status |
 | --- | --- | --- |
-| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, event explorer |
-| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, event search, metrics |
-| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups |
-| Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups |
+| Frontend | SvelteKit, TypeScript, Tailwind CSS, Chart.js | Dashboard cards, project charts, anomaly table, event explorer |
+| Backend API | FastAPI, Pydantic settings | Health, auth, project, API key, ingestion, event search, metrics, anomalies |
+| Worker | Python | Queue consumer, normalization, fingerprinting, event storage, metric rollups, anomaly detection |
+| Metadata DB | PostgreSQL/Neon | Users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies |
 | Queue | Redis/QStash-compatible | Queue abstraction with local JSONL fallback |
 | Event Store | ClickHouse/Tinybird-compatible | Schema placeholder |
 | AI | Gemini API | Planned integration |
@@ -145,6 +145,8 @@ Phase 3 worker tests cover message normalization, stable fingerprints, successfu
 
 Phase 4 tests cover rollup bucket calculation, error rate calculation, latency avg/p95 calculation, and metrics endpoint ownership.
 
+Phase 5 tests cover z-score calculation, error-rate spikes, latency spikes, repeated new fingerprints, fatal bursts, anomaly deduplication, and anomaly endpoint ownership.
+
 ## Demo Ingestion
 
 After starting the API and creating a project API key, send demo events:
@@ -166,12 +168,24 @@ Processed events are written to the configured local event store fallback or Pos
 
 Metric rollups are updated by the worker in 60-second buckets and shown in `/projects/{projectId}`.
 
+## Deterministic Anomaly Detection
+
+SignalForge does not use Gemini or any LLM to decide whether an anomaly exists. Detection is deterministic Python logic:
+
+- Error-rate spike: current 5-minute error rate is compared to the prior 30-60 minute baseline. High severity requires `current_error_rate > 0.20` and `z_score >= 3.0`; critical severity is created when `current_error_rate > 0.50`.
+- Latency spike: current p95 latency must exceed `baseline_p95 * 3` and be greater than `1000ms`.
+- New repeated error: a new error fingerprint crossing the configured repeat threshold creates an anomaly.
+- Fatal burst: fatal events crossing the configured 5-minute threshold create a critical anomaly.
+
+Open anomalies are deduplicated by project, service, environment, type, window, and fingerprint.
+
 ## Screenshots
 
 After later polish, capture screenshots for:
 
 - Dashboard project cards.
 - Project overview charts.
+- Anomaly table/timeline.
 - Event explorer with selected event details.
 - Project settings with ingestion instructions.
 

@@ -105,6 +105,24 @@ export type MetricsResponse = {
   }>;
 };
 
+export type Anomaly = {
+  id: string;
+  project_id: string;
+  service: string;
+  environment: string;
+  anomaly_type: string;
+  severity: string;
+  score: number;
+  baseline_value: number | null;
+  observed_value: number;
+  window_start: string;
+  window_end: string;
+  status: string;
+  fingerprint_hash: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
 const API_BASE_URL = env.PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 async function apiRequest<T>(
@@ -241,6 +259,25 @@ export function getProjectMetrics(
   if (filters.bucketSize) params.set('bucketSize', String(filters.bucketSize));
   const suffix = params.toString() ? `?${params.toString()}` : '';
   return apiRequest<MetricsResponse>(`/projects/${projectId}/metrics${suffix}`, {}, token);
+}
+
+export function listAnomalies(
+  token: string,
+  projectId: string,
+  filters: {
+    service?: string;
+    environment?: string;
+    severity?: string;
+    status?: string;
+    anomaly_type?: string;
+  } = {}
+): Promise<{ anomalies: Anomaly[] }> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest<{ anomalies: Anomaly[] }>(`/projects/${projectId}/anomalies${suffix}`, {}, token);
 }
 
 export { API_BASE_URL };

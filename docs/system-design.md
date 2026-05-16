@@ -12,9 +12,9 @@
 8. Discord alerts are sent for critical incidents and recoveries.
 9. The SvelteKit dashboard shows service health, events, incidents, and pipeline health.
 
-## Phase 4 Scope
+## Phase 5 Scope
 
-Phase 4 adds service-level metric rollups and the core dashboard on top of worker processing:
+Phase 5 adds deterministic anomaly detection on top of service-level rollups and fingerprints:
 
 - Monorepo structure.
 - SvelteKit login, dashboard, project list, and project API key settings screens.
@@ -39,11 +39,16 @@ Phase 4 adds service-level metric rollups and the core dashboard on top of worke
 - Metrics API for dashboard time series, service list, error rate, p95 latency, and active incident placeholder.
 - Project overview charts and service health table.
 - Dashboard project cards with recent event volume and error rate.
-- PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, and metric_rollups.
+- Error-rate spike detection using rolling baselines and z-scores.
+- Latency spike detection using p95 baseline comparisons.
+- New repeated error detection from fingerprint counts.
+- Fatal event burst detection.
+- Anomaly API and frontend anomaly table/timeline.
+- PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, and anomalies.
 - Docker Compose for local Postgres and Redis.
 - GitHub Actions skeleton.
 
-No anomaly detection, incident grouping, AI summaries, alerts, or pipeline-health dashboard are implemented in Phase 4.
+No incident grouping, AI summaries, alerts, or pipeline-health dashboard are implemented in Phase 5.
 
 ## API Key Hashing and Ownership Model
 
@@ -64,3 +69,35 @@ Client-provided `eventId` values are used for idempotency per project. Repeated 
 ## Metric Rollups
 
 After a worker stores a new event, it updates the matching `project_id + service + environment + bucket_start + bucket_size_seconds` rollup. The local fallback stores latency samples so avg and p95 can be computed exactly for portfolio-scale demos. The PostgreSQL path recomputes the current bucket from `events_metadata` after each event, which is simple and reliable at demo scale and keeps the logic modular for a future ClickHouse/Tinybird query implementation.
+
+## Anomaly Detection
+
+Gemini is not used for detection. The worker runs deterministic checks after rollup and fingerprint updates:
+
+```text
+current_error_rate = (error_events + fatal_events) / total_events
+z_score = (current_error_rate - baseline_mean) / baseline_stddev
+
+high error-rate anomaly:
+  total_events >= min_sample_count
+  current_error_rate > 0.20
+  z_score >= 3.0
+
+critical error-rate anomaly:
+  total_events >= min_sample_count
+  current_error_rate > 0.50
+
+latency anomaly:
+  total_events >= min_sample_count
+  current_p95 > baseline_p95 * 3
+  current_p95 > 1000ms
+
+new repeated error:
+  fingerprint first_seen is inside current 5-minute window
+  occurrence_count >= repeated_fingerprint_threshold
+
+fatal burst:
+  fatal_events in current 5-minute window >= fatal_burst_threshold
+```
+
+Open anomalies are deduplicated by project, service, environment, anomaly type, 5-minute window, and fingerprint hash. Incident grouping is intentionally left for Phase 6.

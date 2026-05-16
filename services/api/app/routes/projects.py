@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import get_current_user, get_metadata_store
 from app.schemas.project import ProjectCreateRequest, ProjectPublic, ProjectUpdateRequest
+from app.services.anomaly_service import AnomalyQueryService
 from app.services.event_store_service import EventStoreService
 from app.services.metrics_service import MetricsService
 from app.services.metadata_store import (
@@ -114,6 +115,37 @@ async def get_project_services(
         raise HTTPException(status_code=404, detail="Project not found")
     metrics = MetricsService().get_project_metrics(project_id=project.id)
     return {"services": metrics["services"]}
+
+
+@router.get("/{project_id}/anomalies")
+async def list_project_anomalies(
+    project_id: str,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    store: Annotated[MetadataStore, Depends(get_metadata_store)],
+    service: str | None = None,
+    environment: str | None = None,
+    severity: str | None = None,
+    status: str | None = None,
+    anomaly_type: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    limit: int = 100,
+) -> dict:
+    project = await store.get_project(project_id, current_user.id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    anomalies = AnomalyQueryService().list_anomalies(
+        project_id=project.id,
+        service=service,
+        environment=environment,
+        severity=severity,
+        status=status,
+        anomaly_type=anomaly_type,
+        start=start,
+        end=end,
+        limit=min(max(limit, 1), 200),
+    )
+    return {"anomalies": anomalies}
 
 
 @router.get("/{project_id}", response_model=ProjectPublic)

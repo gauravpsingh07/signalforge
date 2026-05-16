@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     local_queue_path: str = "../../tmp/signalforge-events.jsonl"
     local_event_store_path: str = "../../tmp/signalforge-processed-events.jsonl"
     local_metric_rollups_path: str = "../../tmp/signalforge-metric-rollups.json"
+    local_anomalies_path: str = "../../tmp/signalforge-anomalies.json"
+    anomaly_min_sample_count: int = 5
+    anomaly_repeated_fingerprint_threshold: int = 5
+    anomaly_fatal_burst_threshold: int = 3
 
     model_config = SettingsConfigDict(
         env_file=".env",

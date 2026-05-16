@@ -17,5 +17,8 @@ Phase 1 demo:
 12. Run the worker from `services/worker` with `python -m app.worker --once` once per queued event.
 13. Open `/projects/{projectId}` and verify total events, error rate, p95 latency, charts, and top services appear.
 14. Open `/projects/{projectId}/events` and verify processed events appear with service, level, latency, metadata, and fingerprint details.
+15. Run `python scripts/generate_error_spike.py --api-url http://localhost:8000 --project-key sf_demo_your_key`.
+16. Run the worker once per queued spike event.
+17. Open `/projects/{projectId}/anomalies` and verify deterministic anomalies appear.
 
-Future demo phases will add spike generation, metric rollups, anomaly detection, incidents, AI summaries, alerts, and pipeline observability.
+Future demo phases will add incident grouping, AI summaries, alerts, and pipeline observability.

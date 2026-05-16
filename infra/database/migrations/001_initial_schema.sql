@@ -101,6 +101,24 @@ CREATE TABLE IF NOT EXISTS metric_rollups (
   UNIQUE(project_id, service, environment, bucket_start, bucket_size_seconds)
 );
 
+CREATE TABLE IF NOT EXISTS anomalies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  service TEXT NOT NULL,
+  environment TEXT NOT NULL,
+  anomaly_type TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  score NUMERIC NOT NULL,
+  baseline_value NUMERIC,
+  observed_value NUMERIC,
+  window_start TIMESTAMPTZ NOT NULL,
+  window_end TIMESTAMPTZ NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  fingerprint_hash TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_project_id ON api_keys(project_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_key_prefix ON api_keys(key_prefix);
@@ -110,6 +128,10 @@ CREATE INDEX IF NOT EXISTS idx_event_fingerprints_project_id ON event_fingerprin
 CREATE INDEX IF NOT EXISTS idx_events_metadata_project_timestamp ON events_metadata(project_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_events_metadata_filters ON events_metadata(project_id, service, environment, level);
 CREATE INDEX IF NOT EXISTS idx_metric_rollups_project_bucket ON metric_rollups(project_id, bucket_start DESC);
+CREATE INDEX IF NOT EXISTS idx_anomalies_project_status ON anomalies(project_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_anomalies_open_dedupe
+  ON anomalies(project_id, service, environment, anomaly_type, window_start, COALESCE(fingerprint_hash, ''))
+  WHERE status = 'open';
 
 -- Later phases add:
--- anomalies, incidents, incident_events, and alerts.
+-- incidents, incident_events, and alerts.

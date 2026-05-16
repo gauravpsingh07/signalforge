@@ -1,6 +1,6 @@
 # API Reference
 
-Phase 4 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, and metrics.
+Phase 5 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, and anomaly reads.
 
 ## Implemented
 
@@ -236,10 +236,49 @@ Response:
 
 Returns services with rollup data for filter controls.
 
+## Anomalies
+
+### `GET /projects/{project_id}/anomalies`
+
+Requires dashboard JWT auth. Returns deterministic anomalies for an owned project.
+
+Supported filters:
+
+- `service`
+- `environment`
+- `severity`
+- `status`
+- `anomaly_type`
+- `start`
+- `end`
+- `limit`
+
+Response:
+
+```json
+{
+  "anomalies": [
+    {
+      "id": "anomaly_uuid",
+      "service": "payment-api",
+      "environment": "production",
+      "anomaly_type": "error_rate_spike",
+      "severity": "high",
+      "score": 4.2,
+      "baseline_value": 0.03,
+      "observed_value": 0.42,
+      "window_start": "2026-05-15T16:00:00+00:00",
+      "window_end": "2026-05-15T16:05:00+00:00",
+      "status": "open"
+    }
+  ]
+}
+```
+
 ## Placeholders
 
 - `/v1/events/status`
 - `/metrics/status`
 - `/incidents/status`
 
-Future phases will replace remaining placeholders with anomaly and incident endpoints.
+Future phases will replace remaining placeholders with incident endpoints.
