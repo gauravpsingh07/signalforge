@@ -12,9 +12,9 @@
 8. Discord alerts are sent for critical incidents and recoveries.
 9. The SvelteKit dashboard shows service health, events, incidents, and pipeline health.
 
-## Phase 11 Scope
+## Current Implemented Scope
 
-Phase 11 adds provider-ready free-tier deployment configuration and documentation on top of the completed ingestion, incident, summary, alerting, pipeline observability, and demo-hardening system:
+SignalForge currently includes the completed ingestion, incident, summary, alerting, pipeline observability, demo-hardening, deployment-documentation, and final presentation scope:
 
 - Monorepo structure.
 - SvelteKit login, dashboard, project list, and project API key settings screens.
@@ -74,6 +74,7 @@ Phase 11 adds provider-ready free-tier deployment configuration and documentatio
 - Vercel SvelteKit app config for the frontend.
 - Deployment documentation for Neon migrations, Upstash Redis REST queue setup, frontend/API/worker provider commands, and smoke testing.
 - Free-tier strategy documentation covering provider caveats, rate limits, batching, fallbacks, and portfolio-scale assumptions.
+- Final README and screenshot placeholder documentation with no fake deployed URLs, fake screenshots, production SLA claims, or resume bullet sections.
 - PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, incident_events, and alerts.
 - Docker Compose for local Postgres and Redis.
 - GitHub Actions skeleton.

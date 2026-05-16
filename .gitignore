@@ -9,6 +9,8 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+htmlcov/
 .venv/
 venv/
 dist/
@@ -19,16 +21,27 @@ build/
 node_modules/
 .svelte-kit/
 .vite/
+.turbo/
 apps/web/build/
+apps/web/.svelte-kit/
+apps/web/.vite/
 apps/web/.vercel/
 apps/web/.netlify/
+apps/web/.wrangler/
 
 # Local data and logs
 *.log
 *.sqlite
+*.sqlite3
 *.db
+*.db-shm
+*.db-wal
+*.dump
 tmp/
 coverage/
+playwright-report/
+test-results/
+docs/screenshots/tmp/
 
 # OS/editor
 .DS_Store
