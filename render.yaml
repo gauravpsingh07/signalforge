@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: signalforge-api
+    env: python
+    plan: free
+    rootDir: services/api
+    buildCommand: python -m pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: API_KEY_PEPPER
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+      - key: DASHBOARD_BASE_URL
+        sync: false
+
+  - type: worker
+    name: signalforge-worker
+    env: python
+    plan: free
+    rootDir: services/worker
+    buildCommand: python -m pip install -r requirements.txt
+    startCommand: python -m app.worker
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+      - key: DASHBOARD_BASE_URL
+        sync: false
+      - key: WORKER_CONCURRENCY
+        value: "2"
+      - key: MAX_JOB_ATTEMPTS
+        value: "3"

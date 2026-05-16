@@ -1,6 +1,6 @@
 # API Reference
 
-Phase 10 includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, incident lifecycle APIs, cached AI incident summaries, Discord alert history, pipeline observability APIs, bounded pagination, and request-size hardening.
+Current API includes service health, user auth, project management, hashed API key management, async event ingestion, processed event search, metrics, anomaly reads, incident lifecycle APIs, cached AI incident summaries, Discord alert history, pipeline observability APIs, bounded pagination, and request-size hardening.
 
 ## Implemented
 

@@ -12,9 +12,9 @@
 8. Discord alerts are sent for critical incidents and recoveries.
 9. The SvelteKit dashboard shows service health, events, incidents, and pipeline health.
 
-## Phase 10 Scope
+## Phase 11 Scope
 
-Phase 10 adds reproducible demo flow, testing, UI error-state hardening, and security guardrails on top of the completed ingestion, incident, summary, alerting, and pipeline observability system:
+Phase 11 adds provider-ready free-tier deployment configuration and documentation on top of the completed ingestion, incident, summary, alerting, pipeline observability, and demo-hardening system:
 
 - Monorepo structure.
 - SvelteKit login, dashboard, project list, and project API key settings screens.
@@ -70,6 +70,10 @@ Phase 10 adds reproducible demo flow, testing, UI error-state hardening, and sec
 - Constant-time API key hash comparison.
 - Dashboard retry buttons, accessible filter labels, chart empty states, and sanitized event-message rendering.
 - Tests for script dry-runs, request-size errors, pagination validation, local queue behavior, and requeue append behavior.
+- Render blueprint for the FastAPI API and Python worker.
+- Vercel SvelteKit app config for the frontend.
+- Deployment documentation for Neon migrations, Upstash Redis REST queue setup, frontend/API/worker provider commands, and smoke testing.
+- Free-tier strategy documentation covering provider caveats, rate limits, batching, fallbacks, and portfolio-scale assumptions.
 - PostgreSQL metadata schema for users, projects, api_keys, worker_jobs, events_metadata, event_fingerprints, metric_rollups, anomalies, incidents, incident_events, and alerts.
 - Docker Compose for local Postgres and Redis.
 - GitHub Actions skeleton.

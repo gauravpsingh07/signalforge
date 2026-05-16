@@ -2,13 +2,13 @@
 
 SignalForge is a portfolio-scale observability platform for application events. The full system is designed to ingest logs and events, process them asynchronously, detect anomalies, group incidents, generate AI incident summaries, send alerts, and expose pipeline health.
 
-Phase 10 hardens the local demo flow. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, incident grouping, structured incident summaries, Discord alert logging, incident list/detail pages, manual resolution, an event explorer, pipeline health APIs, worker job visibility, a pipeline-health dashboard, reproducible demo scripts, stronger tests, request-size limits, and UI loading/error/empty-state hardening.
+Phase 11 adds provider-ready free-tier deployment configuration and documentation. It includes registration/login, project management, hashed ingestion API keys, event ingestion, worker processing, deterministic fingerprinting, idempotent event storage, 60-second service rollups, metrics APIs, project overview charts, anomaly detection, incident grouping, structured incident summaries, Discord alert logging, incident list/detail pages, manual resolution, an event explorer, pipeline health APIs, worker job visibility, a pipeline-health dashboard, reproducible demo scripts, stronger tests, request-size limits, UI loading/error/empty-state hardening, Render/Vercel configuration, and deployment/free-tier guides.
 
 ## Why This Is Not a Simple Log Viewer
 
 The project is planned around a distributed event pipeline rather than a raw log table. The intended architecture separates request-time ingestion from background processing, analytics storage, incident grouping, AI summary generation, alert delivery, and internal pipeline observability.
 
-Phase 10 keeps anomaly detection, incident grouping, AI summaries, and Discord alerts downstream of worker processing, then focuses on making that full system reliable to run and explain locally.
+Phase 11 keeps anomaly detection, incident grouping, AI summaries, and Discord alerts downstream of worker processing, then documents how to deploy the same system on free-tier services without requiring paid infrastructure.
 
 ## Architecture Placeholder
 
@@ -99,6 +99,100 @@ Example files are provided in:
 
 Do not commit real secrets or local `.env` files.
 
+### Frontend
+
+Required:
+
+- `PUBLIC_API_BASE_URL`: public API origin used by the SvelteKit frontend.
+
+### API
+
+Required for deployed demos:
+
+- `DATABASE_URL`: Neon/PostgreSQL connection string. Secret.
+- `JWT_SECRET`: dashboard JWT signing secret. Secret.
+- `API_KEY_PEPPER`: API-key hashing pepper. Secret.
+- `ALLOWED_ORIGINS`: comma-separated frontend origins for CORS.
+- `UPSTASH_REDIS_REST_URL`: shared queue provider URL.
+- `UPSTASH_REDIS_REST_TOKEN`: shared queue provider token. Secret.
+
+Optional integrations and limits:
+
+- `QSTASH_TOKEN`
+- `CLICKHOUSE_HOST`
+- `CLICKHOUSE_USER`
+- `CLICKHOUSE_PASSWORD`: secret.
+- `CLICKHOUSE_DATABASE`
+- `GEMINI_API_KEY`: secret.
+- `GEMINI_MODEL`
+- `DISCORD_WEBHOOK_URL`: secret.
+- `DASHBOARD_BASE_URL`
+- `INGEST_RATE_LIMIT_PER_MINUTE`
+- `INGEST_RATE_LIMIT_PER_IP_MINUTE`
+- `INGEST_MAX_BATCH_SIZE`
+- `INGEST_MAX_MESSAGE_LENGTH`
+- `INGEST_MAX_METADATA_BYTES`
+- `MAX_REQUEST_BODY_BYTES`
+- `LOCAL_QUEUE_PATH`
+- `LOCAL_EVENT_STORE_PATH`
+- `LOCAL_WORKER_JOBS_PATH`
+- `LOCAL_METRIC_ROLLUPS_PATH`
+- `LOCAL_ANOMALIES_PATH`
+- `LOCAL_INCIDENTS_PATH`
+- `LOCAL_ALERTS_PATH`
+- `ANOMALY_MIN_SAMPLE_COUNT`
+- `ANOMALY_REPEATED_FINGERPRINT_THRESHOLD`
+- `ANOMALY_FATAL_BURST_THRESHOLD`
+- `INCIDENT_GROUPING_WINDOW_MINUTES`
+- `INCIDENT_AUTO_RESOLVE_COOLDOWN_MINUTES`
+
+### Worker
+
+Required for deployed demos:
+
+- `DATABASE_URL`: same Neon/PostgreSQL connection string used by the API. Secret.
+- `UPSTASH_REDIS_REST_URL`: shared queue provider URL.
+- `UPSTASH_REDIS_REST_TOKEN`: shared queue provider token. Secret.
+
+Optional integrations and limits:
+
+- `QSTASH_TOKEN`
+- `CLICKHOUSE_HOST`
+- `CLICKHOUSE_USER`
+- `CLICKHOUSE_PASSWORD`: secret.
+- `CLICKHOUSE_DATABASE`
+- `GEMINI_API_KEY`: secret.
+- `GEMINI_MODEL`
+- `DISCORD_WEBHOOK_URL`: secret.
+- `DASHBOARD_BASE_URL`
+- `WORKER_CONCURRENCY`
+- `MAX_JOB_ATTEMPTS`
+- `LOCAL_QUEUE_PATH`
+- `LOCAL_EVENT_STORE_PATH`
+- `LOCAL_WORKER_JOBS_PATH`
+- `LOCAL_FINGERPRINTS_PATH`
+- `LOCAL_METRIC_ROLLUPS_PATH`
+- `LOCAL_ANOMALIES_PATH`
+- `LOCAL_INCIDENTS_PATH`
+- `LOCAL_ALERTS_PATH`
+- `INGEST_MAX_METADATA_BYTES`
+- `ANOMALY_MIN_SAMPLE_COUNT`
+- `ANOMALY_REPEATED_FINGERPRINT_THRESHOLD`
+- `ANOMALY_FATAL_BURST_THRESHOLD`
+- `INCIDENT_GROUPING_WINDOW_MINUTES`
+- `INCIDENT_AUTO_RESOLVE_COOLDOWN_MINUTES`
+
+For local MVP usage, leave external provider variables blank and use the documented local fallbacks. For deployed API and worker processes, configure Neon and Upstash so both services share persistent state and queue data.
+
+## Deployment
+
+Live demo placeholder: not deployed in this repository.
+
+- Deployment guide: [docs/deployment.md](docs/deployment.md)
+- Free-tier strategy: [docs/free-tier-strategy.md](docs/free-tier-strategy.md)
+- Render blueprint: [render.yaml](render.yaml)
+- Vercel app config: [apps/web/vercel.json](apps/web/vercel.json)
+
 ## Roadmap Phases
 
 1. Phase 0: Monorepo foundation. Implemented.
@@ -112,12 +206,12 @@ Do not commit real secrets or local `.env` files.
 9. Phase 8: Discord alerts. Implemented.
 10. Phase 9: Pipeline observability. Implemented.
 11. Phase 10: Demo scripts, tests, and hardening. Implemented.
-12. Phase 11: Free-tier deployment docs.
+12. Phase 11: Free-tier deployment docs. Implemented.
 13. Phase 12: Portfolio polish and screenshots.
 
 ## Free-Tier Strategy
 
-SignalForge is designed for local and portfolio-scale demos. External providers are configured through environment variables, and later phases should include local fallbacks for services such as queueing and event storage whenever provider credentials are missing.
+SignalForge is designed for local and portfolio-scale demos. External providers are configured through environment variables, and local fallbacks keep development runnable when provider credentials are missing. See [docs/free-tier-strategy.md](docs/free-tier-strategy.md) for limits, fallbacks, and caveats.
 
 ## Security Notes
 
@@ -330,11 +424,11 @@ After later polish, capture screenshots for:
 - Event explorer with selected event details.
 - Project settings with ingestion instructions.
 
-## Deployment Plan Placeholder
+## Deployment Notes
 
-Planned deployment targets are Vercel or Cloudflare Pages for the frontend, Render for the API and worker, Neon for PostgreSQL, Upstash for Redis/QStash-compatible queueing, ClickHouse Cloud or Tinybird for event analytics, Gemini for summaries, and Discord Webhooks for alerts.
+Phase 11 documents a free-tier deployment path using Vercel or Cloudflare Pages for the frontend, Render for the API and worker, Neon for PostgreSQL, Upstash Redis REST for queueing, optional ClickHouse/Tinybird analytics, optional Gemini summaries, and optional Discord alerts. See [docs/deployment.md](docs/deployment.md).
 
-Free services may sleep and are suitable only for portfolio-scale demos.
+Free services may sleep and are suitable only for portfolio-scale demos. No production SLA is claimed.
 
 ## Screenshots Placeholder
 
