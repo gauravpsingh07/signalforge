@@ -386,22 +386,6 @@ npm run build
 
 The GitHub Actions workflow runs equivalent API, worker, and frontend validation. The frontend CI install step uses `npm install` to avoid the known platform optional-dependency lockfile issue on Linux runners.
 
-## Screenshots And GIFs
-
-Screenshots are not committed yet. Place real screenshots in `docs/screenshots/` after running the local demo. Do not add fake screenshots.
-
-Planned captures:
-
-- Login and dashboard.
-- Project overview charts.
-- Event explorer.
-- Anomaly table.
-- Incident detail with Gemini or fallback summary.
-- Pipeline health dashboard.
-- Discord alert history or a clearly labeled skipped-alert state when no webhook is configured.
-
-See [docs/screenshots/README.md](docs/screenshots/README.md).
-
 ## Future Improvements
 
 - Implement a provider-backed ClickHouse or Tinybird event store path behind the existing event-store abstraction.
@@ -409,4 +393,3 @@ See [docs/screenshots/README.md](docs/screenshots/README.md).
 - Add service-silence anomaly detection.
 - Add per-project Discord webhook storage with masking and rotation flows.
 - Add browser-level end-to-end tests for the dashboard demo path.
-- Add real screenshots or GIFs after running the final local demo.
