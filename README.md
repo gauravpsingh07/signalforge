@@ -315,17 +315,46 @@ All demo scripts support `--dry-run`.
 
 ## Deployment
 
-Live demo placeholder: not deployed in this repository.
+Current free-tier demo:
+
+- Frontend: https://signalforge-orcin.vercel.app
+- API: https://signalforge-api-28ht.onrender.com
+- API health: https://signalforge-api-28ht.onrender.com/health
+
+The hosted free-tier setup uses Vercel for the frontend, Render Free Web Service for the API, Neon PostgreSQL for metadata, and Upstash Redis for the shared queue. Render did not provide a free Background Worker option during setup, so full async processing for the free demo requires running the Python worker locally with the same Neon and Upstash environment variables. This preserves the separate API + queue + worker architecture without claiming always-on background processing on the free tier.
 
 - Deployment guide: [docs/deployment.md](docs/deployment.md)
 - Free-tier strategy: [docs/free-tier-strategy.md](docs/free-tier-strategy.md)
 - Render blueprint: [render.yaml](render.yaml)
 - Vercel app config: [apps/web/vercel.json](apps/web/vercel.json)
 
+Run the local worker during deployed demos from `services/worker`:
+
+```powershell
+$env:DATABASE_URL="YOUR_NEON_DATABASE_URL"
+$env:UPSTASH_REDIS_REST_URL="YOUR_UPSTASH_REDIS_REST_URL"
+$env:UPSTASH_REDIS_REST_TOKEN="YOUR_UPSTASH_REDIS_REST_TOKEN"
+$env:WORKER_CONCURRENCY="2"
+$env:MAX_JOB_ATTEMPTS="3"
+# Optional:
+$env:GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+$env:DISCORD_WEBHOOK_URL="YOUR_DISCORD_WEBHOOK_URL"
+python -m app.worker
+```
+
+Send demo events to the deployed API:
+
+```bash
+python scripts/send_demo_events.py --api-url https://signalforge-api-28ht.onrender.com --project-key sf_demo_your_key --count 20
+python scripts/generate_error_spike.py --api-url https://signalforge-api-28ht.onrender.com --project-key sf_demo_your_key
+python scripts/generate_latency_spike.py --api-url https://signalforge-api-28ht.onrender.com --project-key sf_demo_your_key
+```
+
 ## Free-Tier Limitations
 
 - The project is intended for local and portfolio-scale demos, not production traffic.
 - Free services may sleep, so first requests can be slow.
+- The free hosted demo does not include an always-on hosted worker. Keep the local worker running during demos to process queued jobs.
 - Provider quotas can change; rate limits and payload caps are configurable through environment variables.
 - Local JSONL fallbacks are not shared storage and should not be used for multi-instance deployments.
 - ClickHouse/Tinybird event analytics are documented as a target schema; the current runnable implementation uses local/PostgreSQL-compatible event paths.
