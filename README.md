@@ -321,7 +321,14 @@ Current free-tier demo:
 - API: https://signalforge-api-28ht.onrender.com
 - API health: https://signalforge-api-28ht.onrender.com/health
 
-The hosted free-tier setup uses Vercel for the frontend, Render Free Web Service for the API, Neon PostgreSQL for metadata, and Upstash Redis for the shared queue. Render did not provide a free Background Worker option during setup, so full async processing for the free demo requires running the Python worker locally with the same Neon and Upstash environment variables. This preserves the separate API + queue + worker architecture without claiming always-on background processing on the free tier.
+The hosted free-tier setup uses Vercel for the frontend, Render Free Web Service for the API, Neon PostgreSQL for metadata, and Upstash Redis for the shared queue. Render did not provide a free Background Worker option during setup, so queued jobs are drained on a schedule by the `Drain event queue` GitHub Actions workflow (`.github/workflows/worker-drain.yml`), which runs `python -m app.worker --drain` every 15 minutes with the shared Neon and Upstash credentials stored as repository secrets. A local worker still gives instant processing during live demos.
+
+### Hosted Demo Access
+
+The login page shows an "Explore the live demo (read-only)" button when `PUBLIC_DEMO_EMAIL` and `PUBLIC_DEMO_PASSWORD` are configured in Vercel. It signs into a shared demo account whose dashboard is pre-seeded with a full incident story: normal traffic, an error spike, grouped anomalies, an open critical incident with a summary, alert history, and pipeline jobs.
+
+- The API keeps this account read-only: mutating routes return 403 for the email configured in `DEMO_USER_EMAIL` (default `demo@signalforge.dev`).
+- Seed or refresh the demo data with `scripts/seed_demo_dashboard.py` (run it with the worker virtualenv against the Neon `DATABASE_URL`; `--reset` rebuilds the timeline anchored to now).
 
 - Deployment guide: [docs/deployment.md](docs/deployment.md)
 - Free-tier strategy: [docs/free-tier-strategy.md](docs/free-tier-strategy.md)
@@ -354,7 +361,7 @@ python scripts/generate_latency_spike.py --api-url https://signalforge-api-28ht.
 
 - The project is intended for local and portfolio-scale demos, not production traffic.
 - Free services may sleep, so first requests can be slow.
-- The free hosted demo does not include an always-on hosted worker. Keep the local worker running during demos to process queued jobs.
+- The free hosted demo has no always-on hosted worker. A scheduled GitHub Actions drain processes queued jobs roughly every 15 minutes; run the local worker when you need instant processing during a live demo.
 - Provider quotas can change; rate limits and payload caps are configurable through environment variables.
 - Local JSONL fallbacks are not shared storage and should not be used for multi-instance deployments.
 - ClickHouse/Tinybird event analytics are documented as a target schema; the current runnable implementation uses local/PostgreSQL-compatible event paths.

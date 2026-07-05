@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.dependencies import get_current_user, get_metadata_store
+from app.dependencies import forbid_demo_user, get_current_user, get_metadata_store
 from app.schemas.project import ProjectCreateRequest, ProjectPublic, ProjectUpdateRequest
 from app.services.alert_service import AlertService
 from app.services.anomaly_service import AnomalyQueryService
@@ -40,6 +40,7 @@ async def create_project(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     store: Annotated[MetadataStore, Depends(get_metadata_store)],
 ) -> ProjectPublic:
+    forbid_demo_user(current_user)
     try:
         project = await store.create_project(
             user_id=current_user.id,
@@ -219,6 +220,7 @@ async def update_project(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     store: Annotated[MetadataStore, Depends(get_metadata_store)],
 ) -> ProjectPublic:
+    forbid_demo_user(current_user)
     project = await store.update_project(
         project_id=project_id,
         user_id=current_user.id,

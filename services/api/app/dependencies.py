@@ -49,6 +49,16 @@ async def get_current_user(
     return user
 
 
+def forbid_demo_user(user: UserRecord) -> None:
+    """Keep the shared read-only demo account from mutating shared state."""
+    demo_email = get_settings().demo_user_email.strip().lower()
+    if demo_email and user.email.strip().lower() == demo_email:
+        raise HTTPException(
+            status_code=403,
+            detail="The shared demo account is read-only. Register your own account to make changes.",
+        )
+
+
 async def get_ingestion_api_key(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     store: Annotated[MetadataStore, Depends(get_metadata_store)],

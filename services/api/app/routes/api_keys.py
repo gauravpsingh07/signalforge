@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.dependencies import get_current_user, get_metadata_store
+from app.dependencies import forbid_demo_user, get_current_user, get_metadata_store
 from app.schemas.api_key import ApiKeyCreateRequest, ApiKeyCreateResponse, ApiKeyPublic
 from app.services.metadata_store import ApiKeyRecord, MetadataStore, UserRecord
 from app.utils.security import api_key_prefix, generate_api_key, hash_api_key
@@ -27,6 +27,7 @@ async def create_project_api_key(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     store: Annotated[MetadataStore, Depends(get_metadata_store)],
 ) -> ApiKeyCreateResponse:
+    forbid_demo_user(current_user)
     project = await store.get_project(project_id, current_user.id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -68,6 +69,7 @@ async def revoke_api_key(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     store: Annotated[MetadataStore, Depends(get_metadata_store)],
 ) -> ApiKeyPublic:
+    forbid_demo_user(current_user)
     key = await store.get_api_key(key_id)
     if key is None:
         raise HTTPException(status_code=404, detail="API key not found")

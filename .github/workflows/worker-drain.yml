@@ -1,0 +1,64 @@
+name: Drain event queue
+
+# Render's free tier has no background worker, so this scheduled job runs the
+# SignalForge worker in drain mode against the shared Neon + Upstash
+# environment. Queued demo events are processed within ~15 minutes without
+# anyone running a local worker.
+#
+# Required repository secrets: DATABASE_URL, UPSTASH_REDIS_REST_URL,
+# UPSTASH_REDIS_REST_TOKEN. Optional: GEMINI_API_KEY, DISCORD_WEBHOOK_URL,
+# DASHBOARD_BASE_URL. The job exits quietly when secrets are not configured.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-drain
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/worker
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      DASHBOARD_BASE_URL: ${{ secrets.DASHBOARD_BASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip when queue secrets are not configured
+        id: guard
+        run: |
+          if [ -z "$UPSTASH_REDIS_REST_URL" ] || [ -z "$DATABASE_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Queue secrets are not configured; nothing to drain."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.configured == 'true'
+        with:
+          python-version: "3.11"
+
+      - name: Install worker dependencies
+        if: steps.guard.outputs.configured == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Drain queued jobs
+        if: steps.guard.outputs.configured == 'true'
+        run: python -m app.worker --drain 200

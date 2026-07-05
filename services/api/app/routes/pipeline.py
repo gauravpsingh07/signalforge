@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.dependencies import get_current_user, get_metadata_store
+from app.dependencies import forbid_demo_user, get_current_user, get_metadata_store
 from app.services.metadata_store import MetadataStore, UserRecord
 from app.services.pipeline_service import PipelineService
 
@@ -54,8 +54,10 @@ async def list_pipeline_jobs(
 @router.post("/pipeline/jobs/{job_id}/retry")
 async def retry_pipeline_job(
     job_id: str,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
     project_ids: Annotated[set[str], Depends(owned_project_ids)],
 ) -> dict:
+    forbid_demo_user(current_user)
     job = PipelineService().retry_job(job_id, project_ids)
     if job is None:
         raise HTTPException(status_code=404, detail="Retryable job not found")

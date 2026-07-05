@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.dependencies import get_current_user, get_metadata_store
+from app.dependencies import forbid_demo_user, get_current_user, get_metadata_store
 from app.services.incident_service import IncidentQueryService
 from app.services.metadata_store import MetadataStore, UserRecord
 
@@ -35,6 +35,7 @@ async def resolve_incident(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
     store: Annotated[MetadataStore, Depends(get_metadata_store)],
 ) -> dict:
+    forbid_demo_user(current_user)
     service = IncidentQueryService()
     detail = service.get_incident_detail(incident_id)
     if detail is None:

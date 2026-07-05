@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     discord_webhook_url: str = ""
     dashboard_base_url: str = ""
+    demo_user_email: str = "demo@signalforge.dev"
     ingest_rate_limit_per_minute: int = 60
     ingest_rate_limit_per_ip_minute: int = 120
     ingest_max_batch_size: int = 25
