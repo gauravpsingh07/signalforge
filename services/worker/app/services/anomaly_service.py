@@ -256,6 +256,86 @@ class AnomalyService:
             metadata=metadata or {},
         )
 
+    def detect_service_silence(self, event: NormalizedEvent) -> list[dict[str, Any]]:
+        """Flag sibling services that were recently active but have gone quiet.
+
+        Silence cannot be detected by an event from the silent service itself,
+        so this piggybacks on traffic from any other service in the project.
+        """
+        settings = get_settings()
+        silence_minutes = settings.anomaly_service_silence_minutes
+        if silence_minutes <= 0:
+            return []
+
+        now = parse_dt(event.timestamp)
+        silence_threshold = timedelta(minutes=silence_minutes)
+        lookback = timedelta(minutes=settings.anomaly_service_silence_lookback_minutes)
+        last_active: dict[tuple[str, str], datetime] = {}
+        bucket_seconds: dict[tuple[str, str], int] = {}
+
+        for bucket in self._load_project_rollups(event.project_id):
+            if int(bucket.get("total_events", 0)) <= 0:
+                continue
+            key = (str(bucket["service"]), str(bucket["environment"]))
+            bucket_start = parse_dt(bucket["bucket_start"])
+            if key not in last_active or bucket_start > last_active[key]:
+                last_active[key] = bucket_start
+                bucket_seconds[key] = int(bucket.get("bucket_size_seconds", 60) or 60)
+
+        created = []
+        for (service, environment), last_bucket_start in last_active.items():
+            if service == event.service and environment == event.environment:
+                continue
+            silent_since = last_bucket_start + timedelta(seconds=bucket_seconds[(service, environment)])
+            silent_for = now - silent_since
+            if silent_for < silence_threshold or silent_for > lookback:
+                continue
+            candidate = AnomalyCandidate(
+                project_id=event.project_id,
+                service=service,
+                environment=environment,
+                anomaly_type="service_silence",
+                severity="high",
+                score=round(silent_for.total_seconds() / 60, 2),
+                baseline_value=float(silence_minutes),
+                observed_value=round(silent_for.total_seconds() / 60, 2),
+                window_start=silent_since.isoformat(),
+                window_end=now.isoformat(),
+                fingerprint_hash=None,
+                metadata={"last_event_bucket": last_bucket_start.isoformat()},
+            )
+            anomaly = self.create_if_not_duplicate(candidate)
+            if anomaly:
+                created.append(anomaly)
+        return created
+
+    def _load_project_rollups(self, project_id: str) -> list[dict[str, Any]]:
+        if get_settings().database_url:
+            return self._load_project_rollups_postgres(project_id)
+        if not self.rollups_path.exists():
+            return []
+        data = json.loads(self.rollups_path.read_text(encoding="utf-8") or "{}")
+        return [
+            bucket for bucket in data.values()
+            if bucket.get("project_id") == project_id
+        ]
+
+    def _load_project_rollups_postgres(self, project_id: str) -> list[dict[str, Any]]:
+        with psycopg.connect(get_settings().database_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT project_id::text, service, environment, bucket_start::text,
+                           bucket_size_seconds, total_events, error_events,
+                           warning_events, fatal_events, latency_avg_ms, latency_p95_ms
+                    FROM metric_rollups
+                    WHERE project_id = %s
+                    """,
+                    (project_id,),
+                )
+                cols = [desc.name for desc in cur.description]
+                return [dict(zip(cols, row)) for row in cur.fetchall()]
+
     def _load_rollups(self, project_id: str, service: str, environment: str) -> list[dict[str, Any]]:
         if get_settings().database_url:
             return self._load_rollups_postgres(project_id, service, environment)

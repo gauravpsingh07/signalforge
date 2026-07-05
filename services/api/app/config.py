@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     anomaly_min_sample_count: int = 5
     anomaly_repeated_fingerprint_threshold: int = 5
     anomaly_fatal_burst_threshold: int = 3
+    anomaly_service_silence_minutes: int = 15
+    anomaly_service_silence_lookback_minutes: int = 120
     incident_grouping_window_minutes: int = 30
     incident_auto_resolve_cooldown_minutes: int = 30
 

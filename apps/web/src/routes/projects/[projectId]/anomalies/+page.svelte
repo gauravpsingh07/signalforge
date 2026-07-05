@@ -75,6 +75,7 @@
       <option value="latency_spike">latency spike</option>
       <option value="new_repeated_error">new repeated error</option>
       <option value="fatal_event_burst">fatal event burst</option>
+      <option value="service_silence">service silence</option>
     </select>
     <button class="rounded bg-signal px-4 py-2 text-sm font-medium text-white">Filter</button>
   </form>

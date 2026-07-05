@@ -51,6 +51,7 @@ class EventJobProcessor:
                 fingerprint = self.fingerprint_store.update(event)
                 self.metric_rollups.update_for_event(event)
                 anomalies = self.anomaly_service.detect_for_event(event, fingerprint)
+                anomalies.extend(self.anomaly_service.detect_service_silence(event))
                 self.incident_grouping.handle_created_anomalies(anomalies)
             self.job_status.mark(job_id, "completed", attempts)
             return {

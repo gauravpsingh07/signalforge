@@ -92,7 +92,7 @@ Client app or demo script
 
 ### AI/ML
 
-- Deterministic anomaly detection for error-rate spikes, latency spikes, repeated new fingerprints, and fatal bursts.
+- Deterministic anomaly detection for error-rate spikes, latency spikes, repeated new fingerprints, fatal bursts, and service silence (a recently active service that stops reporting).
 - Incident grouping by project, service, environment, fingerprint, anomaly type, and time window.
 - Gemini incident summaries only after deterministic anomaly detection and incident grouping.
 - Deterministic fallback summaries when Gemini is not configured or returns invalid output.
@@ -184,6 +184,15 @@ Fatal burst:
 
 ```text
 fatal_events in current 5-minute window >= fatal_burst_threshold
+```
+
+Service silence (detected from sibling-service traffic, since a silent
+service emits nothing to trigger on):
+
+```text
+service had events within the lookback window (default 120 minutes)
+no events for at least service_silence_minutes (default 15)
+another service in the same project is still reporting
 ```
 
 Open anomalies are deduplicated by project, service, environment, anomaly type, window, and fingerprint.

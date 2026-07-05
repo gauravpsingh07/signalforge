@@ -398,6 +398,8 @@ def title_for_anomaly(anomaly: dict[str, Any]) -> str:
         return f"Repeated errors in {service}"
     if anomaly_type == "fatal_event_burst":
         return f"Fatal event burst in {service}"
+    if anomaly_type == "service_silence":
+        return f"Service silence in {service}"
     return f"Incident in {service}"
 
 
