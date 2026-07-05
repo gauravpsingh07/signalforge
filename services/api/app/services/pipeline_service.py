@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import httpx
 import psycopg
 from psycopg.rows import dict_row
 
@@ -11,6 +12,7 @@ from app.config import get_settings
 
 
 JOB_STATUSES = ["queued", "processing", "completed", "failed", "dead_letter"]
+QUEUE_KEY = "signalforge:jobs"
 
 
 class PipelineService:
@@ -112,12 +114,30 @@ class PipelineService:
         return "local"
 
     def queue_depth(self) -> int | None:
-        if self.queue_provider() != "local":
+        provider = self.queue_provider()
+        if provider == "redis":
+            return self._redis_queue_depth()
+        if provider != "local":
             return None
         path = Path(get_settings().local_queue_path)
         if not path.exists():
             return 0
         return len([line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()])
+
+    def _redis_queue_depth(self) -> int | None:
+        settings = get_settings()
+        url = settings.upstash_redis_rest_url.rstrip("/")
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                response = client.post(
+                    f"{url}/llen/{QUEUE_KEY}",
+                    headers={"Authorization": f"Bearer {settings.upstash_redis_rest_token}"},
+                )
+                response.raise_for_status()
+                result = response.json().get("result")
+                return int(result) if result is not None else None
+        except (httpx.HTTPError, ValueError, TypeError):
+            return None
 
     def alert_failure_count(self, allowed_project_ids: set[str] | None = None) -> int:
         if get_settings().database_url:
@@ -161,10 +181,25 @@ class PipelineService:
         path.write_text(json.dumps(jobs, indent=2, sort_keys=True), encoding="utf-8")
 
     def _append_queue(self, payload: dict[str, Any]) -> None:
-        path = Path(get_settings().local_queue_path)
+        settings = get_settings()
+        if settings.upstash_redis_rest_url and settings.upstash_redis_rest_token:
+            self._push_upstash_queue(payload)
+            return
+        path = Path(settings.local_queue_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as queue_file:
             queue_file.write(json.dumps(payload, default=str) + "\n")
+
+    def _push_upstash_queue(self, payload: dict[str, Any]) -> None:
+        settings = get_settings()
+        url = settings.upstash_redis_rest_url.rstrip("/")
+        with httpx.Client(timeout=5.0) as client:
+            response = client.post(
+                f"{url}/lpush/{QUEUE_KEY}",
+                headers={"Authorization": f"Bearer {settings.upstash_redis_rest_token}"},
+                json=json.dumps(payload, default=str),
+            )
+            response.raise_for_status()
 
     def _list_postgres_jobs(self) -> list[dict[str, Any]]:
         with psycopg.connect(get_settings().database_url) as conn:

@@ -66,7 +66,7 @@ class EventJobProcessor:
             if status == "failed":
                 job["attempt"] = attempts
                 job["max_attempts"] = max_attempts
-                self.queue.requeue(job)
+                await self.queue.requeue(job)
             return {
                 "processed": False,
                 "job_id": job_id,

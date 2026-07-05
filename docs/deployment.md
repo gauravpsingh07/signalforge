@@ -86,7 +86,7 @@ Optional integrations:
 
 ```text
 GEMINI_API_KEY=...
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 DISCORD_WEBHOOK_URL=...
 DASHBOARD_BASE_URL=<frontend-origin>
 ```

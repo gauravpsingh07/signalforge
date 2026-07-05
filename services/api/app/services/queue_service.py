@@ -58,11 +58,12 @@ class QueueService:
         settings = get_settings()
         url = settings.upstash_redis_rest_url.rstrip("/")
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(
+            response = await client.post(
                 f"{url}/lpush/signalforge:jobs",
                 headers={"Authorization": f"Bearer {settings.upstash_redis_rest_token}"},
                 json=json.dumps(payload),
             )
+            response.raise_for_status()
 
     def _write_jsonl_payload(self, payload: dict[str, Any]) -> None:
         path = Path(get_settings().local_queue_path)

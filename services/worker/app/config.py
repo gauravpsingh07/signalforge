@@ -17,7 +17,7 @@ class WorkerSettings(BaseSettings):
     clickhouse_password: str = ""
     clickhouse_database: str = ""
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-2.5-flash"
     discord_webhook_url: str = ""
     dashboard_base_url: str = ""
     local_queue_path: str = "../../tmp/signalforge-events.jsonl"

@@ -141,11 +141,12 @@ class AiSummaryService:
         )
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{settings.gemini_model}:generateContent?key={settings.gemini_api_key}"
+            f"{settings.gemini_model}:generateContent"
         )
         with httpx.Client(timeout=10.0) as client:
             response = client.post(
                 url,
+                headers={"x-goog-api-key": settings.gemini_api_key},
                 json={
                     "contents": [{"parts": [{"text": prompt}]}],
                     "generationConfig": {"responseMimeType": "application/json"},

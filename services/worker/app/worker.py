@@ -45,7 +45,7 @@ def main() -> None:
     parser.add_argument(
         "--once",
         action="store_true",
-        help="Print worker status and exit.",
+        help="Process at most one queued job, then exit.",
     )
     args = parser.parse_args()
 
