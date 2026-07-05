@@ -82,6 +82,15 @@ export type MetricBucket = {
   latencyP95Ms: number | null;
 };
 
+export type SloSummary = {
+  target: number;
+  errorBudget: number;
+  windowErrorRate: number;
+  burnRate: number | null;
+  budgetRemaining: number | null;
+  status: string;
+};
+
 export type MetricsResponse = {
   range: string;
   bucketSize: number;
@@ -94,6 +103,7 @@ export type MetricsResponse = {
     errorRate: number;
     activeIncidents: number;
   };
+  slo: SloSummary;
   series: MetricBucket[];
   services: string[];
   topServices: Array<{

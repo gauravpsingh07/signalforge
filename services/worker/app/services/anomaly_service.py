@@ -145,6 +145,28 @@ class AnomalyService:
         elif current_error_rate > 0.20 and score >= 3.0:
             candidates.append(self._candidate(event, "error_rate_spike", "high", score, baseline_mean, current_error_rate, window_start, window_end))
 
+        error_budget = round(1.0 - settings.slo_target, 6)
+        if error_budget > 0:
+            burn_rate = current_error_rate / error_budget
+            if burn_rate >= settings.slo_fast_burn_threshold:
+                candidates.append(
+                    self._candidate(
+                        event,
+                        "slo_fast_burn",
+                        "high",
+                        round(burn_rate, 2),
+                        error_budget,
+                        current_error_rate,
+                        window_start,
+                        window_end,
+                        metadata={
+                            "slo_target": settings.slo_target,
+                            "burn_rate": round(burn_rate, 2),
+                            "fast_burn_threshold": settings.slo_fast_burn_threshold,
+                        },
+                    )
+                )
+
         if int(current["fatal_events"]) >= settings.anomaly_fatal_burst_threshold:
             candidates.append(
                 self._candidate(

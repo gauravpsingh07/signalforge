@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     anomaly_fatal_burst_threshold: int = 3
     anomaly_service_silence_minutes: int = 15
     anomaly_service_silence_lookback_minutes: int = 120
+    slo_target: float = 0.995
+    slo_fast_burn_threshold: float = 14.4
     incident_grouping_window_minutes: int = 30
     incident_auto_resolve_cooldown_minutes: int = 30
 

@@ -93,6 +93,7 @@ Client app or demo script
 ### AI/ML
 
 - Deterministic anomaly detection for error-rate spikes, latency spikes, repeated new fingerprints, fatal bursts, and service silence (a recently active service that stops reporting).
+- Availability SLO tracking: per-window error-budget burn rate on the project overview, plus an `slo_fast_burn` anomaly when the budget burns at page-worthy speed (default 14.4x).
 - Incident grouping by project, service, environment, fingerprint, anomaly type, and time window.
 - Gemini incident summaries only after deterministic anomaly detection and incident grouping.
 - Deterministic fallback summaries when Gemini is not configured or returns invalid output.
@@ -193,6 +194,14 @@ service emits nothing to trigger on):
 service had events within the lookback window (default 120 minutes)
 no events for at least service_silence_minutes (default 15)
 another service in the same project is still reporting
+```
+
+SLO fast burn (Google SRE-style error-budget burn rate):
+
+```text
+error_budget = 1 - slo_target            (default target 99.5%)
+burn_rate = window_error_rate / error_budget
+anomaly when burn_rate >= slo_fast_burn_threshold (default 14.4)
 ```
 
 Open anomalies are deduplicated by project, service, environment, anomaly type, window, and fingerprint.

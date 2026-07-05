@@ -16,6 +16,50 @@ def calculate_error_rate(total_events: int, error_events: int, fatal_events: int
     return (error_events + fatal_events) / total_events
 
 
+def build_slo_summary(
+    total_events: int,
+    error_events: int,
+    fatal_events: int,
+    target: float,
+    fast_burn_threshold: float,
+) -> dict[str, Any]:
+    """Availability SLO summary for the selected window.
+
+    burn rate = window error rate / error budget. A burn rate of 1.0 consumes
+    the budget exactly at the sustainable pace; the fast-burn threshold
+    (Google SRE workbook default 14.4) marks page-worthy budget consumption.
+    """
+    error_budget = round(1.0 - target, 6)
+    error_rate = calculate_error_rate(total_events, error_events, fatal_events)
+
+    if error_budget <= 0 or total_events <= 0:
+        return {
+            "target": target,
+            "errorBudget": max(error_budget, 0.0),
+            "windowErrorRate": error_rate,
+            "burnRate": None,
+            "budgetRemaining": None,
+            "status": "no_data" if total_events <= 0 else "misconfigured",
+        }
+
+    burn_rate = round(error_rate / error_budget, 2)
+    if burn_rate >= fast_burn_threshold:
+        status = "burning"
+    elif burn_rate > 1.0:
+        status = "at_risk"
+    else:
+        status = "healthy"
+
+    return {
+        "target": target,
+        "errorBudget": error_budget,
+        "windowErrorRate": error_rate,
+        "burnRate": burn_rate,
+        "budgetRemaining": round(max(0.0, 1.0 - burn_rate), 4),
+        "status": status,
+    }
+
+
 class MetricsService:
     def __init__(self, path: str | None = None) -> None:
         self.path = Path(path or get_settings().local_metric_rollups_path)
@@ -41,6 +85,8 @@ class MetricsService:
         services = self._services(rollups)
         top_services = self._top_services(filtered)
 
+        settings = get_settings()
+
         return {
             "range": range_value,
             "bucketSize": bucket_size,
@@ -53,6 +99,13 @@ class MetricsService:
                 ),
                 "activeIncidents": IncidentQueryService().count_open(project_id),
             },
+            "slo": build_slo_summary(
+                totals["totalEvents"],
+                totals["errorEvents"],
+                totals["fatalEvents"],
+                settings.slo_target,
+                settings.slo_fast_burn_threshold,
+            ),
             "series": series,
             "services": services,
             "topServices": top_services,

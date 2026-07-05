@@ -118,6 +118,52 @@
       </article>
     </div>
 
+    {#if metrics.slo}
+      <div class="surface rounded-lg p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold">Availability SLO</h2>
+            <p class="mt-1 text-sm text-slate-500">
+              Target {pct(metrics.slo.target)} with a {pct(metrics.slo.errorBudget)} error budget,
+              measured over the selected {metrics.range} window.
+            </p>
+          </div>
+          <span
+            class="rounded px-2 py-1 text-xs font-semibold {metrics.slo.status === 'burning'
+              ? 'bg-red-100 text-red-700'
+              : metrics.slo.status === 'at_risk'
+                ? 'bg-amber-100 text-amber-800'
+                : metrics.slo.status === 'healthy'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-slate-100 text-slate-600'}"
+          >
+            {metrics.slo.status.replaceAll('_', ' ')}
+          </span>
+        </div>
+        <div class="mt-4 grid gap-4 md:grid-cols-3">
+          <article class="rounded border border-slate-200 bg-white p-4">
+            <p class="text-sm text-slate-500">Burn Rate</p>
+            <p class="mt-2 text-2xl font-semibold">
+              {metrics.slo.burnRate === null ? 'n/a' : `${metrics.slo.burnRate}x`}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">1x consumes the budget exactly on pace</p>
+          </article>
+          <article class="rounded border border-slate-200 bg-white p-4">
+            <p class="text-sm text-slate-500">Window Error Rate</p>
+            <p class="mt-2 text-2xl font-semibold">{pct(metrics.slo.windowErrorRate)}</p>
+            <p class="mt-1 text-xs text-slate-500">Errors + fatals over total events</p>
+          </article>
+          <article class="rounded border border-slate-200 bg-white p-4">
+            <p class="text-sm text-slate-500">Budget Remaining</p>
+            <p class="mt-2 text-2xl font-semibold">
+              {metrics.slo.budgetRemaining === null ? 'n/a' : pct(metrics.slo.budgetRemaining)}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">Share of the window budget still unburned</p>
+          </article>
+        </div>
+      </div>
+    {/if}
+
     <div class="surface rounded-lg p-5">
       <div class="flex items-center justify-between gap-3">
         <h2 class="text-lg font-semibold">Recent Incidents</h2>
