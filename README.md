@@ -101,7 +101,8 @@ Client app or demo script
 
 ### Dashboard
 
-- Login/register flow.
+- Login/register flow, plus a one-click read-only demo login when the shared demo account is configured (with automatic retries while free-tier services wake).
+- Availability SLO panel on the project overview: target, error budget, window burn rate, and budget remaining with a healthy/at-risk/burning status.
 - Project list and project overview pages.
 - Event explorer with service, environment, level, and message filters.
 - Metric charts with empty-state fallback.
@@ -133,6 +134,11 @@ Client app or demo script
 - Frontend validation uses SvelteKit sync, `svelte-check`, and production build.
 
 ## End-To-End Flow
+
+Shortcut: the deployed login page offers "Explore the live demo (read-only)",
+which opens a pre-seeded project with events, anomalies, an open critical
+incident, an SLO panel, alert history, and pipeline health - no registration
+needed.
 
 1. Create a project in the dashboard.
 2. Generate a demo or live ingestion API key.
@@ -415,6 +421,6 @@ The GitHub Actions workflow runs equivalent API, worker, and frontend validation
 
 - Implement a provider-backed ClickHouse or Tinybird event store path behind the existing event-store abstraction.
 - Add retention cleanup jobs for long-running demos.
-- Add service-silence anomaly detection.
 - Add per-project Discord webhook storage with masking and rotation flows.
+- Add multi-window SLO burn-rate alerting (fast + slow windows) on top of the current single-window detector.
 - Add browser-level end-to-end tests for the dashboard demo path.

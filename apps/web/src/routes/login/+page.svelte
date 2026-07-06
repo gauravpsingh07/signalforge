@@ -31,19 +31,43 @@
     }
   }
 
+  let demoStatus = $state('');
+
   async function handleDemoLogin() {
     loading = true;
     error = '';
+    const maxAttempts = 4;
 
-    try {
-      const response = await login(demoEmail, demoPassword);
-      setAccessToken(response.access_token);
-      await goto('/dashboard');
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Unable to open the demo dashboard';
-    } finally {
-      loading = false;
+    // The free-tier API and database sleep when idle; the first login after a
+    // cold start can fail until they wake, so retry before giving up.
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      demoStatus =
+        attempt === 1
+          ? 'Opening the demo dashboard...'
+          : `Waking the free-tier services (attempt ${attempt} of ${maxAttempts})...`;
+
+      try {
+        const response = await login(demoEmail, demoPassword);
+        setAccessToken(response.access_token);
+        await goto('/dashboard');
+        return;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '';
+        if (message.includes('Invalid email')) {
+          error = message;
+          break;
+        }
+        if (attempt === maxAttempts) {
+          error =
+            'The free-tier services are still waking up. Give it a few seconds and click the demo button again.';
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 4000));
+        }
+      }
     }
+
+    demoStatus = '';
+    loading = false;
   }
 </script>
 
@@ -116,11 +140,12 @@
           disabled={loading}
           onclick={handleDemoLogin}
         >
-          Explore the live demo (read-only)
+          {loading && demoStatus ? demoStatus : 'Explore the live demo (read-only)'}
         </button>
         <p class="mt-2 text-xs text-slate-500">
           Opens a shared demo project with pre-seeded events, anomalies, an incident, and alert
-          history. No registration required.
+          history. No registration required. Free-tier services may take up to a minute to wake on
+          the first visit.
         </p>
       </div>
     {/if}

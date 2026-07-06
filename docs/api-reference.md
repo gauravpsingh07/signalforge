@@ -242,11 +242,24 @@ Response:
     "errorRate": 0.071,
     "activeIncidents": 1
   },
+  "slo": {
+    "target": 0.995,
+    "errorBudget": 0.005,
+    "windowErrorRate": 0.071,
+    "burnRate": 14.2,
+    "budgetRemaining": 0.0,
+    "status": "at_risk"
+  },
   "series": [],
   "services": ["payment-api"],
   "topServices": []
 }
 ```
+
+The `slo` block reports availability against `SLO_TARGET` (default `0.995`).
+`burnRate` is the window error rate divided by the error budget; `status` is
+`healthy`, `at_risk` (burn above 1x), `burning` (at or above
+`SLO_FAST_BURN_THRESHOLD`, default `14.4`), `no_data`, or `misconfigured`.
 
 ### `GET /projects/{project_id}/services`
 
